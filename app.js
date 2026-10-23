@@ -6,6 +6,9 @@
   const STATE_KEYS = ["bad", "neutral", "good"];
   const REVEAL_START_MS = 300;
   const REVEAL_STEP_MS = 120;
+  const VERDICT_DELAY_MS = 500;
+  const TOAST_DURATION_MS = 2400;
+  const WARNING_FLASH_DURATION_MS = 1200;
 
   // 显示顺序与原始控制台一致：核心、过程、细节。
   const DICE = [
@@ -87,6 +90,10 @@
     overallCard: document.querySelector("#overall-card"),
     overallScore: document.querySelector("#overall-score"),
     overallVerdict: document.querySelector("#overall-verdict"),
+    copyReport: document.querySelector("#copy-report"),
+    extremeWarning: document.querySelector("#extreme-warning"),
+    warningFlash: document.querySelector("#warning-flash"),
+    toast: document.querySelector("#toast"),
     readoutState: document.querySelector("#readout-state"),
     announcer: document.querySelector("#announcer"),
     dieTemplate: document.querySelector("#die-card-template"),
@@ -98,6 +105,9 @@
   let isRolling = false;
   let revealTimeouts = [];
   let revealIntervals = [];
+  let toastTimeout = null;
+  let warningFlashTimeout = null;
+  let activeResult = null;
 
   function calculateDie(die, roll) {
     const baseNormalized = (2 * (roll - 1)) / (die.sides - 1) - 1;
@@ -124,11 +134,13 @@
   function calculateAll(rolls) {
     const results = DICE.map((die, index) => calculateDie(die, rolls[index]));
     const overall = results.reduce((sum, result) => sum + result.contribution, 0);
+    const d100Result = results.find((result) => result.die.id === "D100");
 
     return {
       results,
       overall,
       verdict: getVerdict(overall),
+      extremeWarning: overall < -40 || d100Result.roll >= 95,
     };
   }
 
@@ -151,6 +163,121 @@
   function formatSigned(value) {
     const safeValue = Math.abs(value) < 0.0000001 ? 0 : value;
     return `${safeValue >= 0 ? "+" : ""}${safeValue.toFixed(2)}`;
+  }
+
+  function formatBattleReport(result) {
+    const diceLines = result.results.map(({ die, roll, state, flavor }) => {
+      const reverseMark = die.reverse ? " (反)" : "";
+      return `【${die.role}】${die.id.padEnd(4)}: ${String(roll).padStart(2)} | 【${STATE_NAMES[state]}】${flavor}${reverseMark}`;
+    });
+
+    return [
+      "📜【虚空天机签】",
+      ...diceLines,
+      "------------------------",
+      `【综合天机】 ${formatSigned(result.overall)}`,
+      `【天师批语】 ${result.verdict.text}`,
+    ].join("\n");
+  }
+
+  async function writeClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch {
+        // 权限或非安全上下文失败时继续使用兼容回退。
+      }
+    }
+
+    const textarea = document.createElement("textarea");
+    const previousFocus = document.activeElement;
+    textarea.value = text;
+    textarea.className = "clipboard-fallback";
+    textarea.setAttribute("readonly", "");
+    document.body.append(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, text.length);
+
+    const copied = document.execCommand?.("copy") === true;
+    textarea.remove();
+    if (previousFocus instanceof HTMLElement) {
+      previousFocus.focus();
+    }
+
+    if (!copied) {
+      throw new Error("Clipboard is unavailable.");
+    }
+  }
+
+  function showToast(message, tone = "success") {
+    if (toastTimeout) {
+      window.clearTimeout(toastTimeout);
+    }
+
+    elements.toast.textContent = message;
+    elements.toast.dataset.tone = tone;
+    elements.toast.hidden = false;
+    elements.toast.classList.remove("is-visible");
+    void elements.toast.offsetWidth;
+    elements.toast.classList.add("is-visible");
+
+    toastTimeout = window.setTimeout(() => {
+      elements.toast.classList.remove("is-visible");
+      elements.toast.hidden = true;
+      toastTimeout = null;
+    }, TOAST_DURATION_MS);
+  }
+
+  async function copyBattleReport() {
+    if (!activeResult) {
+      return;
+    }
+
+    try {
+      await writeClipboard(formatBattleReport(activeResult));
+      showToast("战报已复制，快去群里对线。");
+    } catch {
+      showToast("战报复制失败，请稍后重试。", "error");
+    }
+  }
+
+  function triggerWarningFlash() {
+    if (reducedMotion.matches) {
+      return;
+    }
+
+    if (warningFlashTimeout) {
+      window.clearTimeout(warningFlashTimeout);
+    }
+
+    elements.warningFlash.hidden = false;
+    elements.warningFlash.classList.remove("is-flashing");
+    void elements.warningFlash.offsetWidth;
+    elements.warningFlash.classList.add("is-flashing");
+
+    warningFlashTimeout = window.setTimeout(() => {
+      elements.warningFlash.classList.remove("is-flashing");
+      elements.warningFlash.hidden = true;
+      warningFlashTimeout = null;
+    }, WARNING_FLASH_DURATION_MS);
+  }
+
+  function clearTransientFeedback() {
+    if (toastTimeout) {
+      window.clearTimeout(toastTimeout);
+      toastTimeout = null;
+    }
+    if (warningFlashTimeout) {
+      window.clearTimeout(warningFlashTimeout);
+      warningFlashTimeout = null;
+    }
+
+    elements.toast.classList.remove("is-visible");
+    elements.toast.hidden = true;
+    elements.warningFlash.classList.remove("is-flashing");
+    elements.warningFlash.hidden = true;
+    elements.extremeWarning.hidden = true;
   }
 
   function randomInteger(max) {
@@ -207,12 +334,37 @@
       error.className = "field-error";
       error.id = `error-${die.id}`;
 
-      shell.append(input, maximum);
-      field.append(label, shell, error);
-      fragment.append(field);
-      manualInputs.set(die.id, { input, shell, error, die });
+      const stepper = document.createElement("div");
+      stepper.className = "manual-stepper";
 
-      input.addEventListener("input", () => clearFieldError(die.id));
+      const decrease = document.createElement("button");
+      decrease.className = "step-button";
+      decrease.type = "button";
+      decrease.textContent = "−";
+      decrease.setAttribute("aria-label", `${die.id} ${die.role}点数减一`);
+      decrease.setAttribute("aria-controls", input.id);
+
+      const increase = document.createElement("button");
+      increase.className = "step-button";
+      increase.type = "button";
+      increase.textContent = "+";
+      increase.setAttribute("aria-label", `${die.id} ${die.role}点数加一`);
+      increase.setAttribute("aria-controls", input.id);
+
+      shell.append(input, maximum);
+      stepper.append(decrease, shell, increase);
+      field.append(label, stepper, error);
+      fragment.append(field);
+      const fieldState = { input, shell, error, die, decrease, increase };
+      manualInputs.set(die.id, fieldState);
+
+      input.addEventListener("input", () => {
+        clearFieldError(die.id);
+        updateStepperState(fieldState);
+      });
+      decrease.addEventListener("click", () => adjustManualValue(fieldState, -1));
+      increase.addEventListener("click", () => adjustManualValue(fieldState, 1));
+      updateStepperState(fieldState);
     });
 
     elements.manualFields.append(fragment);
@@ -229,6 +381,28 @@
   function clearAllFieldErrors() {
     manualInputs.forEach((_, dieId) => clearFieldError(dieId));
     elements.formError.textContent = "";
+  }
+
+  function updateStepperState(field) {
+    const rawValue = field.input.value.trim();
+    const numericValue = Number(rawValue);
+    const hasIntegerValue = rawValue !== "" && Number.isInteger(numericValue);
+
+    field.decrease.disabled = hasIntegerValue && numericValue <= 1;
+    field.increase.disabled = hasIntegerValue && numericValue >= field.die.sides;
+  }
+
+  function adjustManualValue(field, delta) {
+    const rawValue = field.input.value.trim();
+    const numericValue = Number(rawValue);
+    const hadValidValue = rawValue !== "" && Number.isInteger(numericValue);
+    const nextValue = hadValidValue
+      ? Math.min(field.die.sides, Math.max(1, numericValue + delta))
+      : 1;
+
+    field.input.value = String(nextValue);
+    clearFieldError(field.die.id);
+    updateStepperState(field);
   }
 
   function setFieldError(field, message) {
@@ -295,6 +469,7 @@
   }
 
   function prepareResults(cards) {
+    clearTransientFeedback();
     elements.diceGrid.replaceChildren(...cards);
     elements.oracleIdle.hidden = true;
     elements.results.hidden = false;
@@ -304,6 +479,10 @@
     elements.overallScore.textContent = "···";
     elements.overallVerdict.textContent = "正在解析六骰偏差";
     elements.overallCard.dataset.verdict = "neutral";
+    elements.overallCard.classList.remove("is-revealing");
+    elements.overallCard.hidden = true;
+    elements.copyReport.disabled = true;
+    elements.extremeWarning.hidden = true;
   }
 
   function renderDieResult(card, result) {
@@ -321,10 +500,25 @@
     );
   }
 
-  function renderOverall(result) {
+  function renderOverall(result, animateReveal) {
+    activeResult = result;
     elements.overallCard.dataset.verdict = result.verdict.tone;
     elements.overallScore.textContent = formatSigned(result.overall);
     elements.overallVerdict.textContent = result.verdict.text;
+    elements.copyReport.disabled = false;
+    elements.extremeWarning.hidden = !result.extremeWarning;
+    elements.overallCard.hidden = false;
+    elements.overallCard.classList.remove("is-revealing");
+
+    if (animateReveal && !reducedMotion.matches) {
+      void elements.overallCard.offsetWidth;
+      elements.overallCard.classList.add("is-revealing");
+    }
+
+    if (result.extremeWarning && !reducedMotion.matches) {
+      triggerWarningFlash();
+    }
+
     elements.readoutState.textContent = "COMPLETE";
     elements.results.setAttribute("aria-busy", "false");
     elements.announcer.textContent =
@@ -338,7 +532,7 @@
 
     const finish = () => {
       cards.forEach((card, index) => renderDieResult(card, result.results[index]));
-      renderOverall(result);
+      renderOverall(result, animate && !reducedMotion.matches);
 
       if (activeMode === "auto") {
         elements.rollAutoLabel.textContent = "再次推演";
@@ -372,12 +566,12 @@
 
     return new Promise((resolve) => {
       const completeTimer = window.setTimeout(() => {
-        renderOverall(result);
+        renderOverall(result, true);
         if (activeMode === "auto") {
           elements.rollAutoLabel.textContent = "再次推演";
         }
         resolve();
-      }, REVEAL_START_MS + (DICE.length - 1) * REVEAL_STEP_MS + 70);
+      }, REVEAL_START_MS + (DICE.length - 1) * REVEAL_STEP_MS + VERDICT_DELAY_MS);
       revealTimeouts.push(completeTimer);
     });
   }
@@ -422,6 +616,8 @@
 
   function resetResults() {
     clearRevealTimers();
+    clearTransientFeedback();
+    activeResult = null;
     elements.diceGrid.replaceChildren();
     elements.results.hidden = true;
     elements.results.removeAttribute("aria-busy");
@@ -429,12 +625,16 @@
     elements.readoutState.textContent = "STANDBY";
     elements.readoutState.classList.remove("is-active");
     elements.overallCard.removeAttribute("data-verdict");
+    elements.overallCard.classList.remove("is-revealing");
+    elements.overallCard.hidden = true;
+    elements.copyReport.disabled = true;
     elements.announcer.textContent = "";
   }
 
   function resetManualForm() {
     manualInputs.forEach((field) => {
       field.input.value = "";
+      updateStepperState(field);
     });
     clearAllFieldErrors();
     resetResults();
@@ -503,6 +703,7 @@
     tab.addEventListener("keydown", handleTabKeydown);
   });
   elements.rollAuto.addEventListener("click", startAutoRoll);
+  elements.copyReport.addEventListener("click", copyBattleReport);
   elements.manualForm.addEventListener("submit", submitManual);
   elements.resetManual.addEventListener("click", resetManualForm);
 

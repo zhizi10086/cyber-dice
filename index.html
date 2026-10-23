@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#020908">
-  <meta name="description" content="虚空天机计算盘 V2.2：自动或手动投掷六颗赛博骰子，读取偏差与综合天机。">
-  <title>虚空天机计算盘 V2.2</title>
+  <meta name="description" content="虚空天机计算盘 V3.0：自动或手动投掷六颗赛博骰子，生成可分享的天机战报。">
+  <title>虚空天机计算盘 V3.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -18,13 +18,13 @@
       <div class="system-line">
         <span class="status-light" aria-hidden="true"></span>
         <span>VOID ORACLE // SYSTEM ONLINE</span>
-        <span class="system-line__code">SYS.22</span>
+        <span class="system-line__code">SYS.30</span>
       </div>
 
       <h1>
         <span class="title-bracket" aria-hidden="true">[</span>
         虚空天机计算盘
-        <span class="title-version">V2.2</span>
+        <span class="title-version">V3.0</span>
         <span class="title-bracket" aria-hidden="true">]</span>
       </h1>
 
@@ -141,7 +141,7 @@
         <div class="results" id="results" hidden>
           <div class="dice-grid" id="dice-grid"></div>
 
-          <article class="overall-card" id="overall-card">
+          <article class="overall-card" id="overall-card" hidden>
             <div class="overall-card__head">
               <span class="eyebrow">FINAL SIGNAL</span>
               <span class="overall-status" id="overall-status">综合天机</span>
@@ -151,6 +151,15 @@
               <span class="verdict-label">天师批语</span>
               <strong id="overall-verdict">等待推演</strong>
             </div>
+            <div class="overall-actions">
+              <button class="copy-button" id="copy-report" type="button">
+                <span aria-hidden="true">⧉</span>
+                <span>复制天机战报</span>
+              </button>
+            </div>
+            <p class="extreme-warning" id="extreme-warning" role="alert" hidden>
+              【警告】虚空煞气极重，强行起阵必遭反噬。
+            </p>
           </article>
         </div>
 
@@ -174,6 +183,9 @@
       </a>
     </footer>
   </div>
+
+  <div class="warning-flash" id="warning-flash" aria-hidden="true" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <noscript>
     <div class="noscript">此计算盘需要启用 JavaScript 才能推演。</div>

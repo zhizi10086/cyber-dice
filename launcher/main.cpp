@@ -21,9 +21,9 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V2.2";
+constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V3.0";
 constexpr wchar_t kWindowClass[] = L"CyberDice.NativeWindow";
-constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-2.2.html";
+constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-3.0.html";
 constexpr int kDefaultClientWidth = 1180;
 constexpr int kDefaultClientHeight = 820;
 constexpr int kMinimumClientWidth = 640;
