@@ -5,6 +5,9 @@
 *.VC.db
 *.VC.opendb
 
+# 内部资料只保存在本地，不进入公开仓库
+/_内部文档/
+
 # Native build outputs
 launcher/generated/
 launcher/out/
