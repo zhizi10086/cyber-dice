@@ -1,0 +1,24 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+# Native build outputs
+launcher/generated/
+launcher/out/
+launcher/obj/
+launcher/x64/
+launcher/**/x64/
+*.obj
+*.pdb
+*.ilk
+
+# Packaging output
+dist/
+
+# NuGet and temporary files
+packages/
+_site/
+*.nupkg

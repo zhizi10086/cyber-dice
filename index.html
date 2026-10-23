@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020908">
+  <meta name="description" content="虚空天机计算盘 V2.2：自动或手动投掷六颗赛博骰子，读取偏差与综合天机。">
+  <title>虚空天机计算盘 V2.2</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <div class="scanline" aria-hidden="true"></div>
+
+  <div class="page-shell">
+    <header class="hero">
+      <div class="system-line">
+        <span class="status-light" aria-hidden="true"></span>
+        <span>VOID ORACLE // SYSTEM ONLINE</span>
+        <span class="system-line__code">SYS.22</span>
+      </div>
+
+      <h1>
+        <span class="title-bracket" aria-hidden="true">[</span>
+        虚空天机计算盘
+        <span class="title-version">V2.2</span>
+        <span class="title-bracket" aria-hidden="true">]</span>
+      </h1>
+
+      <p class="hero__intro">六骰自旋，称量偏差，窥见此刻天机。</p>
+
+      <div class="hero__meta" aria-label="计算盘信息">
+        <span>6 DICE</span>
+        <span>WEIGHT 7.80</span>
+        <span>DEVIATION ±100</span>
+      </div>
+    </header>
+
+    <main class="console">
+      <section class="control-panel" aria-labelledby="control-title">
+        <div class="panel-heading">
+          <span class="panel-index">01</span>
+          <div>
+            <p class="eyebrow">INPUT PROTOCOL</p>
+            <h2 id="control-title">推演方式</h2>
+          </div>
+        </div>
+
+        <div class="mode-tabs" role="tablist" aria-label="选择推演方式">
+          <button
+            class="mode-tab is-active"
+            id="auto-tab"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="auto-panel"
+            data-mode="auto"
+          >
+            自动掷骰
+          </button>
+          <button
+            class="mode-tab"
+            id="manual-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="manual-panel"
+            tabindex="-1"
+            data-mode="manual"
+          >
+            手动掷骰
+          </button>
+        </div>
+
+        <div
+          class="mode-panel"
+          id="auto-panel"
+          role="tabpanel"
+          aria-labelledby="auto-tab"
+        >
+          <p class="panel-copy">
+            调用加密随机源投掷六颗骰子。偏差将依照原始权重归一化，并按核心骰、过程骰、细节骰顺序揭晓。
+          </p>
+          <button class="primary-button" id="roll-auto" type="button">
+            <span class="button-glyph" aria-hidden="true">◇</span>
+            <span id="roll-auto-label">启动自动推演</span>
+          </button>
+        </div>
+
+        <div
+          class="mode-panel"
+          id="manual-panel"
+          role="tabpanel"
+          aria-labelledby="manual-tab"
+          hidden
+        >
+          <p class="panel-copy">
+            输入六颗骰子的实际点数，系统将立即计算偏差、状态与综合天机。
+          </p>
+          <form id="manual-form" novalidate>
+            <div class="manual-grid" id="manual-fields"></div>
+            <p class="form-error" id="form-error" role="alert"></p>
+            <div class="button-row">
+              <button class="primary-button" type="submit">
+                <span class="button-glyph" aria-hidden="true">⌁</span>
+                <span>解析天机</span>
+              </button>
+              <button class="ghost-button" id="reset-manual" type="button">重置</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="protocol-note">
+          <span class="protocol-note__mark" aria-hidden="true">i</span>
+          <p>D100 为反向骰：点数越低，吉兆越强。</p>
+        </div>
+      </section>
+
+      <section class="oracle-panel" aria-labelledby="oracle-title">
+        <div class="panel-heading panel-heading--oracle">
+          <span class="panel-index">02</span>
+          <div>
+            <p class="eyebrow">ORACLE READOUT</p>
+            <h2 id="oracle-title">天机读数</h2>
+          </div>
+          <span class="readout-state" id="readout-state">STANDBY</span>
+        </div>
+
+        <div class="oracle-idle" id="oracle-idle">
+          <div class="void-orb" aria-hidden="true">
+            <span class="void-ring void-ring--outer"></span>
+            <span class="void-ring void-ring--middle"></span>
+            <span class="void-ring void-ring--inner"></span>
+            <span class="void-core">∅</span>
+          </div>
+          <p class="idle-title">等待天机接入</p>
+          <p class="idle-copy">选择推演方式，启动六骰阵列。</p>
+        </div>
+
+        <div class="results" id="results" hidden>
+          <div class="dice-grid" id="dice-grid"></div>
+
+          <article class="overall-card" id="overall-card">
+            <div class="overall-card__head">
+              <span class="eyebrow">FINAL SIGNAL</span>
+              <span class="overall-status" id="overall-status">综合天机</span>
+            </div>
+            <div class="overall-score" id="overall-score">+0.00</div>
+            <div class="overall-verdict">
+              <span class="verdict-label">天师批语</span>
+              <strong id="overall-verdict">等待推演</strong>
+            </div>
+          </article>
+        </div>
+
+        <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__meta">
+        <span>VOID ORACLE // 六骰归一化判定</span>
+        <span>仅供娱乐 · 结果不构成现实建议</span>
+      </div>
+      <a
+        class="footer__download"
+        id="offline-download"
+        href="https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-win-x64.exe"
+        data-online-only
+      >
+        <span>WINDOWS 离线版</span>
+        <span class="footer__download-meta" aria-hidden="true">X64 / EXE ↓</span>
+      </a>
+    </footer>
+  </div>
+
+  <noscript>
+    <div class="noscript">此计算盘需要启用 JavaScript 才能推演。</div>
+  </noscript>
+
+  <template id="die-card-template">
+    <article class="die-card">
+      <div class="die-card__head">
+        <div>
+          <span class="die-id"></span>
+          <span class="die-role"></span>
+        </div>
+        <span class="die-state"></span>
+      </div>
+      <div class="die-card__main">
+        <span class="die-value" aria-label="骰子点数">--</span>
+        <div class="die-metrics">
+          <span>偏差</span>
+          <strong class="die-deviation">--</strong>
+        </div>
+      </div>
+      <p class="die-flavor">天机未显</p>
+      <span class="reverse-mark" hidden>反向骰</span>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
