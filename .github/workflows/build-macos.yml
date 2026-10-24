@@ -1,0 +1,49 @@
+name: Build macOS Universal DMG
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Add Rust targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build universal DMG
+        run: npm run tauri -- build --target universal-apple-darwin
+
+      - name: Prepare release artifact
+        run: |
+          set -euo pipefail
+          DMG_PATH="$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name '*.dmg' -print -quit)"
+          test -n "$DMG_PATH"
+          hdiutil verify "$DMG_PATH"
+          mkdir -p artifacts
+          cp "$DMG_PATH" artifacts/Cyber-Dice-macOS-universal.dmg
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Cyber-Dice-macOS-universal
+          path: desktop/artifacts/Cyber-Dice-macOS-universal.dmg
+          if-no-files-found: error

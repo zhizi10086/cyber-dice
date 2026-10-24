@@ -7,8 +7,12 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#020908",
   "theme_color": "#020908",
+  "categories": ["entertainment", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "assets/icon-192.png",

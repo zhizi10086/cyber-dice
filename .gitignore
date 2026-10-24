@@ -25,3 +25,17 @@ dist/
 packages/
 _site/
 *.nupkg
+
+# Cross-platform desktop builds
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+
+# Android TWA build outputs
+android/.gradle/
+android/.temp/
+android/build/
+android/app/build/
+android/*.apk
+android/*.aab

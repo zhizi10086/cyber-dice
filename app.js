@@ -14,6 +14,13 @@
 
   const CONFIG = {
     scenes: {
+      wander: {
+        id: "wander",
+        label: "虚空漫游",
+        shareKey: "wander",
+        goodWhisper: "（虚空低语：心念澄明，前路自有回响。）",
+        badWhisper: "（虚空低语：此刻迷雾正浓，宜静候星象流转。）",
+      },
       relic: {
         id: "relic",
         label: "开核桃",
@@ -62,10 +69,11 @@
       },
     ],
     storage: {
-      historyKey: "cyberDice.history.v1",
+      historyKey: "cyberDice.history.v2",
+      legacyHistoryKey: "cyberDice.history.v1",
       rollTimesKey: "cyberDice.rollTimes.v1",
       cardNameKey: "cyberDice.cardName.v1",
-      historyLimit: 5,
+      historyLimit: 50,
       addictionWindowMs: 300000,
       addictionThreshold: 3,
     },
@@ -169,7 +177,15 @@
     historyPanel: document.querySelector("#history-panel"),
     historyList: document.querySelector("#history-list"),
     historyEmpty: document.querySelector("#history-empty"),
+    historyFilterEmpty: document.querySelector("#history-filter-empty"),
+    historyFilters: [...document.querySelectorAll(".archive-filter")],
     historyCount: document.querySelector("#history-count"),
+    historyFilterCounts: {
+      all: document.querySelector("#filter-count-all"),
+      good: document.querySelector("#filter-count-good"),
+      neutral: document.querySelector("#filter-count-neutral"),
+      bad: document.querySelector("#filter-count-bad"),
+    },
     historyStorageNote: document.querySelector("#history-storage-note"),
     clearHistory: document.querySelector("#clear-history"),
     clearHistoryDialog: document.querySelector("#clear-history-dialog"),
@@ -199,7 +215,8 @@
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const manualInputs = new Map();
   let activeMode = "auto";
-  let activeScene = "relic";
+  let activeScene = "wander";
+  let activeHistoryFilter = "all";
   let isRolling = false;
   let isSharedView = false;
   let sharedExitNotice = "";
@@ -420,24 +437,99 @@
     };
   }
 
-  function getHistoryEntries() {
-    const value = storage.read(CONFIG.storage.historyKey, []);
-    if (!Array.isArray(value)) {
+  function getToneFromOverall(overall) {
+    if (overall > 20) {
+      return "good";
+    }
+    if (overall < -20) {
+      return "bad";
+    }
+    return "neutral";
+  }
+
+  function createRecordId() {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+
+    return `record-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function normalizeHistoryEntry(entry, index) {
+    const validModes = new Set(["auto", "manual"]);
+    const validScenes = new Set(Object.keys(CONFIG.scenes));
+    if (
+      !entry ||
+      !Number.isFinite(entry.timestamp) ||
+      !validModes.has(entry.mode) ||
+      !validScenes.has(entry.scene) ||
+      !Number.isFinite(entry.overall) ||
+      typeof entry.verdict !== "string"
+    ) {
+      return null;
+    }
+
+    const validStates = new Set([0, 1, 2]);
+    const dice = Array.isArray(entry.dice)
+      ? entry.dice
+        .filter((die) =>
+          die &&
+          DICE.some((definition) => definition.id === die.id) &&
+          Number.isInteger(die.roll) &&
+          Number.isFinite(die.contribution) &&
+          validStates.has(die.state) &&
+          typeof die.flavor === "string",
+        )
+        .slice(0, DICE.length)
+      : [];
+
+    return {
+      schemaVersion: 2,
+      id: typeof entry.id === "string" && entry.id
+        ? entry.id
+        : `legacy-${entry.timestamp}-${index}`,
+      timestamp: entry.timestamp,
+      mode: entry.mode,
+      scene: entry.scene,
+      overall: entry.overall,
+      tone: ["good", "neutral", "bad"].includes(entry.tone)
+        ? entry.tone
+        : getToneFromOverall(entry.overall),
+      verdict: entry.verdict,
+      achievement:
+        typeof entry.achievement === "string" && entry.achievement
+          ? entry.achievement
+          : "",
+      whisper: typeof entry.whisper === "string" ? entry.whisper : "",
+      dice: dice.length === DICE.length ? dice : null,
+      legacy: dice.length !== DICE.length,
+    };
+  }
+
+  function migrateLegacyHistory() {
+    const legacy = storage.read(CONFIG.storage.legacyHistoryKey, []);
+    if (!Array.isArray(legacy) || legacy.length === 0) {
       return [];
     }
 
-    const validModes = new Set(["auto", "manual"]);
-    const validScenes = new Set(Object.keys(CONFIG.scenes));
+    const migrated = legacy
+      .map(normalizeHistoryEntry)
+      .filter(Boolean)
+      .slice(0, CONFIG.storage.historyLimit);
+    storage.write(CONFIG.storage.historyKey, migrated);
+    storage.remove(CONFIG.storage.legacyHistoryKey);
+    return migrated;
+  }
+
+  function getHistoryEntries() {
+    const value = storage.read(CONFIG.storage.historyKey, null);
+    if (!Array.isArray(value)) {
+      return migrateLegacyHistory();
+    }
 
     return value
-      .filter((entry) =>
-        entry &&
-        Number.isFinite(entry.timestamp) &&
-        validModes.has(entry.mode) &&
-        validScenes.has(entry.scene) &&
-        Number.isFinite(entry.overall) &&
-        typeof entry.verdict === "string",
-      )
+      .map(normalizeHistoryEntry)
+      .filter(Boolean)
       .slice(0, CONFIG.storage.historyLimit);
   }
 
@@ -462,19 +554,154 @@
     return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
+  function formatFullDateTime(timestamp) {
+    const date = new Date(timestamp);
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+      `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+
+  function getHistoryToneLabel(tone) {
+    return tone === "good" ? "吉" : tone === "bad" ? "凶" : "平";
+  }
+
+  function createHistoryShareText(entry) {
+    const scene = CONFIG.scenes[entry.scene];
+    const lines = [
+      "📜【虚空天机历史】",
+      `时间：${formatFullDateTime(entry.timestamp)}`,
+      `场景：${scene.label}`,
+      `模式：${entry.mode === "manual" ? "手" : "自"}`,
+    ];
+
+    if (entry.dice) {
+      entry.dice.forEach((die) => {
+        const definition = DICE.find((candidate) => candidate.id === die.id);
+        lines.push(
+          `【${definition.role}】${die.id.padEnd(4)}: ${String(die.roll).padStart(2)} | 偏差 ${formatSigned(die.contribution)} | 【${STATE_NAMES[die.state]}】${die.flavor}`,
+        );
+      });
+    } else {
+      lines.push("【点数】旧记录未保存点数明细");
+    }
+
+    lines.push(
+      "------------------------",
+      `【综合天机】 ${formatSigned(entry.overall)}`,
+      `【天师批语】 ${entry.verdict}`,
+    );
+    if (entry.achievement) {
+      lines.push(`【成就】${entry.achievement}`);
+    }
+    if (entry.whisper) {
+      lines.push(entry.whisper);
+    }
+
+    return lines.join("\n");
+  }
+
+  function buildHistoryShareUrl(entry) {
+    if (!entry.dice) {
+      return "";
+    }
+
+    const byId = Object.fromEntries(
+      entry.dice.map((die) => [die.id, { roll: die.roll }]),
+    );
+    return buildShareUrl({
+      scene: CONFIG.scenes[entry.scene],
+      byId,
+    });
+  }
+
+  function createHistoryDiceDetails(entry) {
+    const container = document.createElement("div");
+    container.className = "history-dice";
+
+    entry.dice.forEach((savedDie) => {
+      const definition = DICE.find((die) => die.id === savedDie.id);
+      const row = document.createElement("div");
+      row.className = "history-die";
+      row.dataset.state = STATE_KEYS[savedDie.state];
+
+      const dieName = document.createElement("span");
+      dieName.textContent = `${savedDie.id} ${definition.role}`;
+      const roll = document.createElement("strong");
+      roll.textContent = `${savedDie.roll} 点`;
+      const contribution = document.createElement("span");
+      contribution.textContent = formatSigned(savedDie.contribution);
+      const flavor = document.createElement("span");
+      flavor.textContent = `${STATE_NAMES[savedDie.state]} · ${savedDie.flavor}`;
+
+      row.append(dieName, roll, contribution, flavor);
+      container.append(row);
+    });
+
+    return container;
+  }
+
+  async function copyHistoryText(entry) {
+    try {
+      await writeClipboard(createHistoryShareText(entry));
+      showToast("带时间的历史战报已复制。");
+    } catch {
+      showToast("历史战报复制失败，请稍后重试。", "error");
+    }
+  }
+
+  async function copyHistoryLink(entry) {
+    const url = buildHistoryShareUrl(entry);
+    if (!url) {
+      showToast("旧记录没有点数明细，无法生成分享链接。", "error");
+      return;
+    }
+
+    try {
+      await writeClipboard(url);
+      showToast("历史卦象链接已复制。");
+    } catch {
+      showToast("历史链接复制失败，请稍后重试。", "error");
+    }
+  }
+
   function renderHistory() {
     const entries = getHistoryEntries();
     elements.historyCount.textContent =
       `${entries.length} / ${CONFIG.storage.historyLimit}`;
+    const counts = {
+      all: entries.length,
+      good: entries.filter((entry) => entry.tone === "good").length,
+      neutral: entries.filter((entry) => entry.tone === "neutral").length,
+      bad: entries.filter((entry) => entry.tone === "bad").length,
+    };
+    Object.entries(elements.historyFilterCounts).forEach(([tone, element]) => {
+      element.textContent = String(counts[tone]);
+    });
+    elements.historyFilters.forEach((button) => {
+      const isActive = button.dataset.filter === activeHistoryFilter;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+
+    const filtered = activeHistoryFilter === "all"
+      ? entries
+      : entries.filter((entry) => entry.tone === activeHistoryFilter);
     elements.historyEmpty.hidden = entries.length > 0;
-    elements.historyList.hidden = entries.length === 0;
+    elements.historyFilterEmpty.hidden =
+      entries.length === 0 || filtered.length > 0;
+    elements.historyList.hidden = filtered.length === 0;
     elements.clearHistory.disabled = entries.length === 0;
     elements.historyList.replaceChildren();
 
-    entries.forEach((entry) => {
+    filtered.forEach((entry) => {
       const scene = CONFIG.scenes[entry.scene];
       const item = document.createElement("li");
-      item.className = "history-entry";
+      item.className = "history-item";
+      const details = document.createElement("details");
+      details.className = "history-entry";
+      details.dataset.recordId = entry.id;
+      const summary = document.createElement("summary");
+      summary.className = "history-entry__summary";
 
       const time = document.createElement("time");
       time.className = "history-entry__time";
@@ -493,11 +720,61 @@
       score.className = "history-entry__score";
       score.textContent = formatSigned(entry.overall);
 
+      const tone = document.createElement("span");
+      tone.className = "history-entry__tone";
+      tone.dataset.tone = entry.tone;
+      tone.textContent = getHistoryToneLabel(entry.tone);
+
       const verdict = document.createElement("span");
       verdict.className = "history-entry__verdict";
       verdict.textContent = entry.verdict;
 
-      item.append(time, mode, sceneLabel, score, verdict);
+      summary.append(time, mode, sceneLabel, score, tone, verdict);
+
+      const detail = document.createElement("div");
+      detail.className = "history-entry__details";
+      if (entry.dice) {
+        detail.append(createHistoryDiceDetails(entry));
+      } else {
+        const legacyNote = document.createElement("p");
+        legacyNote.className = "history-entry__legacy";
+        legacyNote.textContent = "旧记录未保存点数明细。";
+        detail.append(legacyNote);
+      }
+      if (entry.achievement) {
+        const achievement = document.createElement("p");
+        achievement.className = "history-entry__achievement";
+        achievement.textContent = `成就解锁：${entry.achievement}`;
+        detail.append(achievement);
+      }
+      if (entry.whisper) {
+        const whisper = document.createElement("p");
+        whisper.className = "history-entry__whisper";
+        whisper.textContent = entry.whisper;
+        detail.append(whisper);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "history-entry__actions";
+      const textButton = document.createElement("button");
+      textButton.className = "history-action";
+      textButton.type = "button";
+      textButton.textContent = "复制带时间战报";
+      textButton.addEventListener("click", () => copyHistoryText(entry));
+      const linkButton = document.createElement("button");
+      linkButton.className = "history-action";
+      linkButton.type = "button";
+      linkButton.textContent = "复制本卦链接";
+      linkButton.disabled = !entry.dice;
+      if (!entry.dice) {
+        linkButton.title = "旧记录没有点数明细";
+      }
+      linkButton.addEventListener("click", () => copyHistoryLink(entry));
+      actions.append(textButton, linkButton);
+      detail.append(actions);
+
+      details.append(summary, detail);
+      item.append(details);
       elements.historyList.append(item);
     });
   }
@@ -505,11 +782,23 @@
   function recordResult(result) {
     const now = Date.now();
     const entry = {
+      schemaVersion: 2,
+      id: createRecordId(),
       timestamp: now,
       mode: result.mode,
       scene: result.scene.id,
       overall: result.overall,
+      tone: result.verdict.tone,
       verdict: result.verdict.text,
+      achievement: result.achievement?.name || "",
+      whisper: result.whisper,
+      dice: result.results.map((saved) => ({
+        id: saved.die.id,
+        roll: saved.roll,
+        contribution: saved.contribution,
+        state: saved.state,
+        flavor: saved.flavor,
+      })),
     };
     const history = [entry, ...getHistoryEntries()]
       .slice(0, CONFIG.storage.historyLimit);
@@ -720,31 +1009,49 @@
     });
   }
 
-  function downloadCanvas(canvas) {
-    return new Promise((resolve, reject) => {
+  async function deliverCanvas(canvas) {
+    const blob = await new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (!blob) {
           reject(new Error("Card image generation returned an empty blob."));
           return;
         }
-
-        const now = new Date();
-        const pad = (value) => String(value).padStart(2, "0");
-        const filename =
-          `tianji-card-${now.getFullYear()}${pad(now.getMonth() + 1)}` +
-          `${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}` +
-          `${pad(now.getSeconds())}.png`;
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = objectUrl;
-        anchor.download = filename;
-        document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-        resolve();
+        resolve(blob);
       }, "image/png");
     });
+
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    const filename =
+      `tianji-card-${now.getFullYear()}${pad(now.getMonth() + 1)}` +
+      `${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}` +
+      `${pad(now.getSeconds())}.png`;
+    const file = new File([blob], filename, { type: "image/png" });
+
+    if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+      try {
+        await navigator.share({
+          title: "虚空天机计算盘",
+          text: "我的本卦天机卡牌",
+          files: [file],
+        });
+        return "shared";
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          return "cancelled";
+        }
+      }
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    return "downloaded";
   }
 
   async function generateCardImage(cardName) {
@@ -774,8 +1081,10 @@
         windowWidth: 750,
         windowHeight: 1334,
       });
-      await downloadCanvas(canvas);
-      showToast("天机卡牌已生成。");
+      const delivery = await deliverCanvas(canvas);
+      if (delivery !== "cancelled") {
+        showToast("天机卡牌已生成。");
+      }
     } catch {
       showToast("天机卡牌生成失败，请稍后重试。", "error");
     } finally {
@@ -1381,9 +1690,14 @@
   }
 
   function configureOnlineOnlyLinks() {
+    const isDesktopShell =
+      Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__) ||
+      location.hostname === "tauri.localhost" ||
+      location.protocol === "tauri:";
     const isOnlinePage =
       (location.protocol === "http:" || location.protocol === "https:") &&
-      location.hostname !== "cyber-dice.local";
+      location.hostname !== "cyber-dice.local" &&
+      !isDesktopShell;
 
     document.querySelectorAll("[data-online-only]").forEach((element) => {
       element.hidden = !isOnlinePage;
@@ -1391,11 +1705,16 @@
   }
 
   function registerServiceWorker() {
+    const isDesktopShell =
+      Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__) ||
+      location.hostname === "tauri.localhost" ||
+      location.protocol === "tauri:";
     const isLocalDevelopment =
       location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const canRegister =
       "serviceWorker" in navigator &&
       location.hostname !== "cyber-dice.local" &&
+      !isDesktopShell &&
       (location.protocol === "https:" || isLocalDevelopment);
 
     if (!canRegister) {
@@ -1428,6 +1747,12 @@
     if (elements.historyPanel.open) {
       renderHistory();
     }
+  });
+  elements.historyFilters.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeHistoryFilter = button.dataset.filter;
+      renderHistory();
+    });
   });
   elements.clearHistory.addEventListener("click", () => {
     if (getHistoryEntries().length > 0) {

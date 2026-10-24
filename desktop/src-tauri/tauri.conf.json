@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "虚空天机计算盘",
+  "version": "4.0.0",
+  "identifier": "com.zhizi10086.cyberdice",
+  "build": {
+    "beforeBuildCommand": "node scripts/stage.mjs",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "虚空天机计算盘 V4.0.0",
+        "width": 1180,
+        "height": 820,
+        "minWidth": 640,
+        "minHeight": 520,
+        "center": true,
+        "resizable": true,
+        "backgroundColor": "#020908"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' data: blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg"],
+    "category": "Entertainment",
+    "shortDescription": "虚空天机计算盘",
+    "longDescription": "六骰自旋，称量偏差，窥见此刻天机。",
+    "copyright": "Copyright (C) 2026 zhizi10086",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

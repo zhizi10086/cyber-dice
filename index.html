@@ -2,17 +2,17 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#020908">
-  <meta name="description" content="虚空天机计算盘 V3.1.1：按 Warframe 场景起卦，生成可分享的天机战报、卡牌与天命档案。">
-  <title>虚空天机计算盘 V3.1.1</title>
+  <meta name="description" content="虚空天机计算盘 V4.0.0：以虚空漫游或 Warframe 场景起卦，生成可分享的天机战报、卡牌与天命档案。">
+  <title>虚空天机计算盘 V4.0.0</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="天机骰">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=4.0.0">
 </head>
 <body>
   <div class="ambient-grid" aria-hidden="true"></div>
@@ -23,13 +23,13 @@
       <div class="system-line">
         <span class="status-light" aria-hidden="true"></span>
         <span>VOID ORACLE // SYSTEM ONLINE</span>
-        <span class="system-line__code">SYS.311</span>
+        <span class="system-line__code">SYS.400</span>
       </div>
 
       <h1>
         <span class="title-bracket" aria-hidden="true">[</span>
         虚空天机计算盘
-        <span class="title-version">V3.1.1</span>
+        <span class="title-version">V4.0.0</span>
         <span class="title-bracket" aria-hidden="true">]</span>
       </h1>
 
@@ -68,6 +68,16 @@
               type="button"
               role="radio"
               aria-checked="true"
+              data-scene="wander"
+            >
+              <span>虚空漫游</span>
+            </button>
+            <button
+              class="scene-tab"
+              type="button"
+              role="radio"
+              aria-checked="false"
+              tabindex="-1"
               data-scene="relic"
             >
               <span>开核桃</span>
@@ -235,10 +245,25 @@
       <details class="archive" id="history-panel">
         <summary>
           <span id="archive-title">天命档案</span>
-          <span class="archive__count" id="history-count">0 / 5</span>
+          <span class="archive__count" id="history-count">0 / 50</span>
         </summary>
         <div class="archive__body">
+          <div class="archive-filters" id="history-filters" role="group" aria-label="按吉凶筛选天命档案">
+            <button class="archive-filter is-active" type="button" data-filter="all" aria-pressed="true">
+              <span>全部</span><span id="filter-count-all">0</span>
+            </button>
+            <button class="archive-filter" type="button" data-filter="good" aria-pressed="false">
+              <span>吉</span><span id="filter-count-good">0</span>
+            </button>
+            <button class="archive-filter" type="button" data-filter="neutral" aria-pressed="false">
+              <span>平</span><span id="filter-count-neutral">0</span>
+            </button>
+            <button class="archive-filter" type="button" data-filter="bad" aria-pressed="false">
+              <span>凶</span><span id="filter-count-bad">0</span>
+            </button>
+          </div>
           <p class="archive__empty" id="history-empty">尚无记录，先向虚空问上一卦。</p>
+          <p class="archive__empty" id="history-filter-empty" hidden>当前分类没有记录。</p>
           <ol class="history-list" id="history-list"></ol>
           <p class="archive__storage-note" id="history-storage-note" hidden>
             当前环境无法持久保存档案，本页只保留临时记录。
@@ -280,7 +305,7 @@
     <div class="confirm-dialog__body">
       <p class="eyebrow">PURGE ARCHIVE</p>
       <h2 id="clear-history-title">清空天命档案？</h2>
-      <p>此操作会删除最近五条记录，但不会重置防沉迷计时。</p>
+      <p>此操作会删除最近五十条记录，但不会重置防沉迷计时。</p>
       <div class="confirm-dialog__actions">
         <button class="ghost-button" id="cancel-clear-history" type="button">取消</button>
         <button class="danger-button" id="confirm-clear-history" type="button">确认清空</button>
@@ -309,7 +334,7 @@
       <div class="oracle-card__frame">
         <header class="oracle-card__header">
           <span>VOID ORACLE</span>
-          <span>V3.1.1</span>
+          <span>V4.0.0</span>
         </header>
         <p class="oracle-card__title">虚空天机签</p>
         <p class="oracle-card__seal">法号：<strong id="card-seal-name">无名道友</strong></p>
@@ -366,8 +391,8 @@
     </article>
   </template>
 
-  <script src="vendor/qrcode-generator.js"></script>
-  <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js"></script>
+  <script src="vendor/qrcode-generator.js?v=4.0.0"></script>
+  <script src="vendor/html2canvas.min.js?v=4.0.0"></script>
+  <script src="app.js?v=4.0.0"></script>
 </body>
 </html>
