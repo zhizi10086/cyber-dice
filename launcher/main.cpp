@@ -21,9 +21,12 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V3.0";
+constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V3.1";
 constexpr wchar_t kWindowClass[] = L"CyberDice.NativeWindow";
-constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-3.0.html";
+constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-3.1.html";
+constexpr wchar_t kVirtualHost[] = L"cyber-dice.local";
+constexpr wchar_t kVirtualUrl[] = L"https://cyber-dice.local/index.html";
+constexpr wchar_t kAssetVersion[] = L"3.1";
 constexpr int kDefaultClientWidth = 1180;
 constexpr int kDefaultClientHeight = 820;
 constexpr int kMinimumClientWidth = 640;
@@ -62,26 +65,6 @@ std::string LoadResourceString(int resourceId) {
   return std::string(bytes.begin(), bytes.end());
 }
 
-std::wstring Utf8ToWide(const std::string& text) {
-  if (text.empty()) {
-    return {};
-  }
-
-  const int requiredSize = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-                                               text.data(),
-                                               static_cast<int>(text.size()),
-                                               nullptr, 0);
-  if (requiredSize <= 0) {
-    return {};
-  }
-
-  std::wstring wideText(static_cast<size_t>(requiredSize), L'\0');
-  MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(),
-                      static_cast<int>(text.size()), wideText.data(),
-                      requiredSize);
-  return wideText;
-}
-
 bool ReplaceOnce(std::string& content, const std::string& search,
                  const std::string& replacement) {
   const size_t position = content.find(search);
@@ -93,10 +76,43 @@ bool ReplaceOnce(std::string& content, const std::string& search,
   return true;
 }
 
+std::string Base64Encode(const std::vector<char>& input) {
+  static constexpr char alphabet[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string output;
+  output.reserve(((input.size() + 2) / 3) * 4);
+
+  for (size_t index = 0; index < input.size(); index += 3) {
+    const unsigned int first =
+        static_cast<unsigned char>(input[index]);
+    const unsigned int second =
+        index + 1 < input.size()
+            ? static_cast<unsigned char>(input[index + 1])
+            : 0;
+    const unsigned int third =
+        index + 2 < input.size()
+            ? static_cast<unsigned char>(input[index + 2])
+            : 0;
+    const unsigned int combined = (first << 16) | (second << 8) | third;
+
+    output.push_back(alphabet[(combined >> 18) & 0x3f]);
+    output.push_back(alphabet[(combined >> 12) & 0x3f]);
+    output.push_back(index + 1 < input.size()
+                         ? alphabet[(combined >> 6) & 0x3f]
+                         : '=');
+    output.push_back(index + 2 < input.size()
+                         ? alphabet[combined & 0x3f]
+                         : '=');
+  }
+
+  return output;
+}
+
 std::string BuildEmbeddedDocument() {
   std::string html = LoadResourceString(IDR_INDEX_HTML);
   const std::string css = LoadResourceString(IDR_STYLES_CSS);
   const std::string javaScript = LoadResourceString(IDR_APP_JS);
+  const std::vector<char> formaImage = LoadResourceBytes(IDR_FORMA_PNG);
 
   const bool cssInjected = ReplaceOnce(
       html, R"(  <link rel="stylesheet" href="styles.css">)",
@@ -104,8 +120,12 @@ std::string BuildEmbeddedDocument() {
   const bool scriptInjected = ReplaceOnce(
       html, R"(  <script src="app.js"></script>)",
       "  <script>\n" + javaScript + "\n  </script>");
+  const bool imageInjected = ReplaceOnce(
+      html, R"(src="assets/forma.png")",
+      "src=\"data:image/png;base64," + Base64Encode(formaImage) + "\"");
 
-  if (!cssInjected || !scriptInjected) {
+  if (!cssInjected || !scriptInjected || !imageInjected ||
+      formaImage.empty()) {
     MessageBoxW(nullptr,
                 L"内嵌网页资源不完整，请重新构建离线版。",
                 kWindowTitle, MB_OK | MB_ICONERROR);
@@ -142,6 +162,44 @@ bool WriteUtf8File(const std::filesystem::path& path,
 
   output.write(content.data(), static_cast<std::streamsize>(content.size()));
   return output.good();
+}
+
+bool WriteBinaryFile(const std::filesystem::path& path,
+                     const std::vector<char>& content) {
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  if (!output) {
+    return false;
+  }
+
+  output.write(content.data(), static_cast<std::streamsize>(content.size()));
+  return output.good();
+}
+
+std::filesystem::path PrepareVirtualHostDirectory() {
+  const std::filesystem::path webDirectory =
+      GetLocalAppDataPath() / L"CyberDice" / L"Web" / kAssetVersion;
+  const std::filesystem::path assetsDirectory = webDirectory / L"assets";
+  std::error_code error;
+  std::filesystem::create_directories(assetsDirectory, error);
+  if (error) {
+    return {};
+  }
+
+  const std::string html = LoadResourceString(IDR_INDEX_HTML);
+  const std::string css = LoadResourceString(IDR_STYLES_CSS);
+  const std::string javaScript = LoadResourceString(IDR_APP_JS);
+  const std::vector<char> formaImage = LoadResourceBytes(IDR_FORMA_PNG);
+
+  if (html.empty() || css.empty() || javaScript.empty() ||
+      formaImage.empty() ||
+      !WriteUtf8File(webDirectory / L"index.html", html) ||
+      !WriteUtf8File(webDirectory / L"styles.css", css) ||
+      !WriteUtf8File(webDirectory / L"app.js", javaScript) ||
+      !WriteBinaryFile(assetsDirectory / L"forma.png", formaImage)) {
+    return {};
+  }
+
+  return webDirectory;
 }
 
 void OpenBrowserFallback(bool showNotice) {
@@ -284,7 +342,10 @@ void InitializeWebView(HWND window) {
 
                                     const bool allowed =
                                         _wcsnicmp(uri, L"about:", 6) == 0 ||
-                                        _wcsnicmp(uri, L"data:", 5) == 0;
+                                        _wcsnicmp(
+                                            uri,
+                                            L"https://cyber-dice.local/", 25) ==
+                                            0;
                                     if (!allowed) {
                                       arguments->put_Cancel(TRUE);
                                     }
@@ -308,15 +369,21 @@ void InitializeWebView(HWND window) {
                               &newWindowToken);
 
                           ResizeWebView();
-                          const std::wstring wideHtml =
-                              Utf8ToWide(g_composedHtml);
-                          if (wideHtml.empty()) {
+                          const std::filesystem::path webDirectory =
+                              PrepareVirtualHostDirectory();
+                          ComPtr<ICoreWebView2_3> webView3;
+                          if (webDirectory.empty() ||
+                              FAILED(g_webView.As(&webView3)) ||
+                              !webView3 ||
+                              FAILED(webView3->SetVirtualHostNameToFolderMapping(
+                                  kVirtualHost, webDirectory.c_str(),
+                                  COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW))) {
                             OpenBrowserFallback(true);
                             return E_FAIL;
                           }
 
                           const HRESULT navigateResult =
-                              g_webView->NavigateToString(wideHtml.c_str());
+                              g_webView->Navigate(kVirtualUrl);
                           if (FAILED(navigateResult)) {
                             OpenBrowserFallback(true);
                             return navigateResult;

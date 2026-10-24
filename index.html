@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#020908">
-  <meta name="description" content="虚空天机计算盘 V3.0：自动或手动投掷六颗赛博骰子，生成可分享的天机战报。">
-  <title>虚空天机计算盘 V3.0</title>
+  <meta name="description" content="虚空天机计算盘 V3.1：按 Warframe 场景起卦，生成可分享的天机战报并记录天命档案。">
+  <title>虚空天机计算盘 V3.1</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -18,13 +18,13 @@
       <div class="system-line">
         <span class="status-light" aria-hidden="true"></span>
         <span>VOID ORACLE // SYSTEM ONLINE</span>
-        <span class="system-line__code">SYS.30</span>
+        <span class="system-line__code">SYS.31</span>
       </div>
 
       <h1>
         <span class="title-bracket" aria-hidden="true">[</span>
         虚空天机计算盘
-        <span class="title-version">V3.0</span>
+        <span class="title-version">V3.1</span>
         <span class="title-bracket" aria-hidden="true">]</span>
       </h1>
 
@@ -46,6 +46,44 @@
             <h2 id="control-title">推演方式</h2>
           </div>
         </div>
+
+        <fieldset class="scene-section">
+          <legend>占卜场景</legend>
+          <div class="scene-tabs" id="scene-tabs" role="radiogroup" aria-label="选择占卜场景">
+            <button
+              class="scene-tab is-active"
+              type="button"
+              role="radio"
+              aria-checked="true"
+              data-scene="relic"
+            >
+              <span class="scene-tab__icon" aria-hidden="true">📦</span>
+              <span>开核桃</span>
+            </button>
+            <button
+              class="scene-tab"
+              type="button"
+              role="radio"
+              aria-checked="false"
+              tabindex="-1"
+              data-scene="riven"
+            >
+              <span class="scene-tab__icon" aria-hidden="true">🔮</span>
+              <span>洗紫卡</span>
+            </button>
+            <button
+              class="scene-tab"
+              type="button"
+              role="radio"
+              aria-checked="false"
+              tabindex="-1"
+              data-scene="lich"
+            >
+              <span class="scene-tab__icon" aria-hidden="true">💀</span>
+              <span>捅玄骸</span>
+            </button>
+          </div>
+        </fieldset>
 
         <div class="mode-tabs" role="tablist" aria-label="选择推演方式">
           <button
@@ -139,6 +177,10 @@
         </div>
 
         <div class="results" id="results" hidden>
+          <div class="achievement-banner" id="achievement-banner" role="status" hidden>
+            <span class="achievement-banner__icon" aria-hidden="true">🏆</span>
+            <span id="achievement-text"></span>
+          </div>
           <div class="dice-grid" id="dice-grid"></div>
 
           <article class="overall-card" id="overall-card" hidden>
@@ -151,6 +193,7 @@
               <span class="verdict-label">天师批语</span>
               <strong id="overall-verdict">等待推演</strong>
             </div>
+            <p class="scene-whisper" id="scene-whisper" hidden></p>
             <div class="overall-actions">
               <button class="copy-button" id="copy-report" type="button">
                 <span aria-hidden="true">⧉</span>
@@ -160,12 +203,35 @@
             <p class="extreme-warning" id="extreme-warning" role="alert" hidden>
               【警告】虚空煞气极重，强行起阵必遭反噬。
             </p>
+            <p class="addiction-warning" id="addiction-warning" role="alert" hidden>
+              【天道警示】一日之内频繁窥探天机，气运将耗损，建议下线保肝。
+            </p>
           </article>
         </div>
 
         <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
       </section>
     </main>
+
+    <section class="archive-section" aria-labelledby="archive-title">
+      <details class="archive" id="history-panel">
+        <summary>
+          <span id="archive-title">天命档案</span>
+          <span class="archive__count" id="history-count">0 / 5</span>
+        </summary>
+        <div class="archive__body">
+          <p class="archive__empty" id="history-empty">尚无记录，先向虚空问上一卦。</p>
+          <ol class="history-list" id="history-list"></ol>
+          <p class="archive__storage-note" id="history-storage-note" hidden>
+            当前环境无法持久保存档案，本页只保留临时记录。
+          </p>
+          <button class="clear-history-button" id="clear-history" type="button">
+            <span aria-hidden="true">🗑</span>
+            <span>清空天命档案</span>
+          </button>
+        </div>
+      </details>
+    </section>
 
     <footer class="footer">
       <div class="footer__meta">
@@ -186,6 +252,23 @@
 
   <div class="warning-flash" id="warning-flash" aria-hidden="true" hidden></div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <button class="forma-sacrifice" id="forma-sacrifice" type="button" aria-label="献祭福马" hidden>
+    <img src="assets/forma.png" alt="">
+    <span>献祭福马</span>
+  </button>
+  <div class="forma-floats" id="forma-floats" aria-hidden="true"></div>
+
+  <dialog class="confirm-dialog" id="clear-history-dialog" aria-labelledby="clear-history-title">
+    <div class="confirm-dialog__body">
+      <p class="eyebrow">PURGE ARCHIVE</p>
+      <h2 id="clear-history-title">清空天命档案？</h2>
+      <p>此操作会删除最近五条记录，但不会重置防沉迷计时。</p>
+      <div class="confirm-dialog__actions">
+        <button class="ghost-button" id="cancel-clear-history" type="button">取消</button>
+        <button class="danger-button" id="confirm-clear-history" type="button">确认清空</button>
+      </div>
+    </div>
+  </dialog>
 
   <noscript>
     <div class="noscript">此计算盘需要启用 JavaScript 才能推演。</div>
