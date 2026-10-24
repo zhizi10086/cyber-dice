@@ -11,5 +11,6 @@
 #define IDR_ICON_192_PNG 109
 #define IDR_ICON_512_PNG 110
 #define IDR_APPLE_TOUCH_PNG 111
+#define IDR_RNG_JS 112
 
 #define IDI_APP_ICON 201

@@ -21,12 +21,12 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V4.1.0";
+constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V4.1.1";
 constexpr wchar_t kWindowClass[] = L"CyberDice.NativeWindow";
-constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-4.1.0.html";
+constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-4.1.1.html";
 constexpr wchar_t kVirtualHost[] = L"cyber-dice.local";
 constexpr wchar_t kVirtualUrl[] = L"https://cyber-dice.local/index.html";
-constexpr wchar_t kAssetVersion[] = L"4.1.0";
+constexpr wchar_t kAssetVersion[] = L"4.1.1";
 constexpr int kDefaultClientWidth = 1180;
 constexpr int kDefaultClientHeight = 820;
 constexpr int kMinimumClientWidth = 640;
@@ -111,6 +111,7 @@ std::string Base64Encode(const std::vector<char>& input) {
 std::string BuildEmbeddedDocument() {
   std::string html = LoadResourceString(IDR_INDEX_HTML);
   const std::string css = LoadResourceString(IDR_STYLES_CSS);
+  const std::string randomJavaScript = LoadResourceString(IDR_RNG_JS);
   const std::string javaScript = LoadResourceString(IDR_APP_JS);
   const std::string qrCodeJavaScript =
       LoadResourceString(IDR_QRCODE_JS);
@@ -121,16 +122,19 @@ std::string BuildEmbeddedDocument() {
   const std::vector<char> formaImage = LoadResourceBytes(IDR_FORMA_PNG);
 
   const bool cssInjected = ReplaceOnce(
-      html, R"(  <link rel="stylesheet" href="styles.css?v=4.1.0">)",
+      html, R"(  <link rel="stylesheet" href="styles.css?v=4.1.1">)",
       "  <style>\n" + css + "\n  </style>");
+  const bool randomScriptInjected = ReplaceOnce(
+      html, R"(  <script src="rng.js?v=4.1.1"></script>)",
+      "  <script>\n" + randomJavaScript + "\n  </script>");
   const bool scriptInjected = ReplaceOnce(
-      html, R"(  <script src="app.js?v=4.1.0"></script>)",
+      html, R"(  <script src="app.js?v=4.1.1"></script>)",
       "  <script>\n" + javaScript + "\n  </script>");
   const bool qrCodeInjected = ReplaceOnce(
-      html, R"(  <script src="vendor/qrcode-generator.js?v=4.1.0"></script>)",
+      html, R"(  <script src="vendor/qrcode-generator.js?v=4.1.1"></script>)",
       "  <script>\n" + qrCodeJavaScript + "\n  </script>");
   const bool html2CanvasInjected = ReplaceOnce(
-      html, R"(  <script src="vendor/html2canvas.min.js?v=4.1.0"></script>)",
+      html, R"(  <script src="vendor/html2canvas.min.js?v=4.1.1"></script>)",
       "  <script>\n" + html2CanvasJavaScript + "\n  </script>");
   const bool imageInjected = ReplaceOnce(
       html, R"(src="assets/forma.png")",
@@ -143,9 +147,11 @@ std::string BuildEmbeddedDocument() {
       html, R"(  <link rel="manifest" href="manifest.json">)",
       "");
 
-  if (!cssInjected || !scriptInjected || !qrCodeInjected ||
+  if (!cssInjected || !randomScriptInjected || !scriptInjected ||
+      !qrCodeInjected ||
       !html2CanvasInjected || !imageInjected || !appleIconInjected ||
-      formaImage.empty() || appleTouchIcon.empty()) {
+      randomJavaScript.empty() || formaImage.empty() ||
+      appleTouchIcon.empty()) {
     MessageBoxW(nullptr,
                 L"内嵌网页资源不完整，请重新构建离线版。",
                 kWindowTitle, MB_OK | MB_ICONERROR);
@@ -212,6 +218,7 @@ std::filesystem::path PrepareVirtualHostDirectory() {
 
   const std::string html = LoadResourceString(IDR_INDEX_HTML);
   const std::string css = LoadResourceString(IDR_STYLES_CSS);
+  const std::string randomJavaScript = LoadResourceString(IDR_RNG_JS);
   const std::string javaScript = LoadResourceString(IDR_APP_JS);
   const std::string qrCodeJavaScript =
       LoadResourceString(IDR_QRCODE_JS);
@@ -226,12 +233,14 @@ std::filesystem::path PrepareVirtualHostDirectory() {
   const std::vector<char> appleTouchIcon =
       LoadResourceBytes(IDR_APPLE_TOUCH_PNG);
 
-  if (html.empty() || css.empty() || javaScript.empty() ||
+  if (html.empty() || css.empty() || randomJavaScript.empty() ||
+      javaScript.empty() ||
       qrCodeJavaScript.empty() || html2CanvasJavaScript.empty() ||
       manifest.empty() || serviceWorker.empty() || formaImage.empty() ||
       icon192.empty() || icon512.empty() || appleTouchIcon.empty() ||
       !WriteUtf8File(webDirectory / L"index.html", html) ||
       !WriteUtf8File(webDirectory / L"styles.css", css) ||
+      !WriteUtf8File(webDirectory / L"rng.js", randomJavaScript) ||
       !WriteUtf8File(webDirectory / L"app.js", javaScript) ||
       !WriteUtf8File(webDirectory / L"manifest.json", manifest) ||
       !WriteUtf8File(webDirectory / L"sw.js", serviceWorker) ||

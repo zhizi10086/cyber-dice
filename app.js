@@ -206,6 +206,9 @@
     rollAutoLabel: document.querySelector("#roll-auto-label"),
     rollD20: document.querySelector("#roll-d20"),
     rollD20Label: document.querySelector("#roll-d20-label"),
+    randomSourceStatus: document.querySelector("#random-source-status"),
+    autoRandomNote: document.querySelector("#auto-random-note"),
+    d20RandomNote: document.querySelector("#d20-random-note"),
     manualForm: document.querySelector("#manual-form"),
     manualFields: document.querySelector("#manual-fields"),
     formError: document.querySelector("#form-error"),
@@ -294,7 +297,9 @@
   };
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const randomApi = window.CyberDiceRandom;
   const manualInputs = new Map();
+  let secureRandomAvailable = false;
   let activeSystem = "hex";
   let activeMode = "auto";
   let activeScene = "wander";
@@ -1441,23 +1446,46 @@
     elements.sceneWhisper.hidden = true;
   }
 
-  function randomInteger(max) {
-    const cryptoApi = window.crypto || window.msCrypto;
+  function createUnavailableRandomError() {
+    const error = new Error("安全随机源不可用。");
+    error.code = "CRYPTO_UNAVAILABLE";
+    return error;
+  }
 
-    if (cryptoApi?.getRandomValues) {
-      const values = new Uint32Array(1);
-      const upperBound = Math.floor(0x100000000 / max) * max;
-      let value;
+  function disableAutomaticRolls(notify = false) {
+    secureRandomAvailable = false;
+    elements.rollAuto.disabled = true;
+    elements.rollD20.disabled = true;
+    elements.rollAuto.removeAttribute("aria-busy");
+    elements.rollD20.removeAttribute("aria-busy");
+    elements.randomSourceStatus.textContent = "RNG UNAVAILABLE";
+    elements.randomSourceStatus.classList.add("is-unavailable");
+    elements.autoRandomNote.hidden = false;
+    elements.d20RandomNote.hidden = false;
+    elements.announcer.textContent =
+      "安全随机源不可用，自动掷骰已停用；六合仍可手动输入。";
 
-      do {
-        cryptoApi.getRandomValues(values);
-        value = values[0];
-      } while (value >= upperBound);
-
-      return (value % max) + 1;
+    if (notify) {
+      showToast("安全随机源异常，自动掷骰已停用。", "error");
     }
+  }
 
-    return Math.floor(Math.random() * max) + 1;
+  function initializeRandomSource() {
+    secureRandomAvailable = Boolean(randomApi?.probeSecure());
+    if (!secureRandomAvailable) {
+      disableAutomaticRolls(false);
+    }
+  }
+
+  function secureRandomInteger(max) {
+    if (!secureRandomAvailable || !randomApi) {
+      throw createUnavailableRandomError();
+    }
+    return randomApi.secureInteger(max);
+  }
+
+  function visualRandomInteger(max) {
+    return randomApi.visualInteger(max);
   }
 
   const PHI = (1 + Math.sqrt(5)) / 2;
@@ -1880,7 +1908,7 @@
 
           drawIcosahedron(rotation, -1, "neutral", false);
           if (now - lastTickerUpdate > 70) {
-            elements.d20FaceValue.textContent = String(randomInteger(20));
+            elements.d20FaceValue.textContent = String(visualRandomInteger(20));
             lastTickerUpdate = now;
           }
         } catch {
@@ -2275,9 +2303,9 @@
       stateElement.textContent = "···";
 
       const ticker = window.setInterval(() => {
-        valueElement.textContent = String(randomInteger(DICE[index].sides));
+        valueElement.textContent = String(visualRandomInteger(DICE[index].sides));
       }, 58);
-      valueElement.textContent = String(randomInteger(DICE[index].sides));
+      valueElement.textContent = String(visualRandomInteger(DICE[index].sides));
 
       const settleTimer = window.setTimeout(() => {
         window.clearInterval(ticker);
@@ -2301,12 +2329,13 @@
   }
 
   async function startAutoRoll() {
-    if (isRolling) {
+    if (isRolling || !secureRandomAvailable) {
       return;
     }
 
     isRolling = true;
     elements.rollAuto.disabled = true;
+    elements.rollAuto.setAttribute("aria-busy", "true");
     elements.tabs.forEach((tab) => {
       tab.disabled = true;
     });
@@ -2315,25 +2344,42 @@
     });
     elements.announcer.textContent = "六骰正在推演。";
 
-    const rolls = DICE.map((die) => randomInteger(die.sides));
-    const result = calculateAll(rolls, activeScene, "auto");
-
     try {
+      const rolls = DICE.map((die) => secureRandomInteger(die.sides));
+      const result = calculateAll(rolls, activeScene, "auto");
       await showResults(result, true);
+    } catch (error) {
+      handleAutomaticRollFailure(error);
     } finally {
       isRolling = false;
-      elements.rollAuto.disabled = false;
+      elements.rollAuto.removeAttribute("aria-busy");
       elements.tabs.forEach((tab) => {
         tab.disabled = false;
       });
       elements.sceneTabs.forEach((tab) => {
         tab.disabled = false;
       });
+      if (secureRandomAvailable) {
+        elements.rollAuto.disabled = false;
+      }
     }
   }
 
+  function handleAutomaticRollFailure(error) {
+    if (error?.code === "CRYPTO_UNAVAILABLE") {
+      disableAutomaticRolls(true);
+      return;
+    }
+
+    showToast("自动推演失败，请稍后重试。", "error");
+  }
+
   async function startD20Roll() {
-    if (isRolling || activeSystem !== "d20") {
+    if (
+      isRolling ||
+      activeSystem !== "d20" ||
+      !secureRandomAvailable
+    ) {
       return;
     }
 
@@ -2345,18 +2391,21 @@
     });
     elements.announcer.textContent = "正在投掷 D20 天机骰。";
 
-    const roll = randomInteger(20);
-    const result = createD20Result(roll, true);
-
     try {
+      const roll = secureRandomInteger(20);
+      const result = createD20Result(roll, true);
       await showD20Results(result, true);
+    } catch (error) {
+      handleAutomaticRollFailure(error);
     } finally {
       isRolling = false;
-      elements.rollD20.disabled = false;
       elements.rollD20.removeAttribute("aria-busy");
       elements.systemTabs.forEach((tab) => {
         tab.disabled = false;
       });
+      if (secureRandomAvailable) {
+        elements.rollD20.disabled = false;
+      }
     }
   }
 
@@ -2428,8 +2477,8 @@
     elements.sceneTabs.forEach((tab) => {
       tab.disabled = disabled;
     });
-    elements.rollAuto.disabled = disabled;
-    elements.rollD20.disabled = disabled;
+    elements.rollAuto.disabled = disabled || !secureRandomAvailable;
+    elements.rollD20.disabled = disabled || !secureRandomAvailable;
     elements.manualSubmit.disabled = disabled;
     elements.resetManual.disabled = disabled;
     setManualInputsDisabled(disabled);
@@ -2762,6 +2811,7 @@
     }
   });
 
+  initializeRandomSource();
   configureOnlineOnlyLinks();
   elements.historyStorageNote.hidden = storage.persistent;
   renderHistory();

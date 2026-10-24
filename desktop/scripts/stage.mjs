@@ -13,6 +13,7 @@ await mkdir(destination, { recursive: true });
 for (const file of [
   "index.html",
   "styles.css",
+  "rng.js",
   "app.js",
   "manifest.json",
   "sw.js",

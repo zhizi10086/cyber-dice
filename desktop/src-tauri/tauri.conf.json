@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "虚空天机计算盘",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "identifier": "com.zhizi10086.cyberdice",
   "build": {
     "beforeBuildCommand": "node scripts/stage.mjs",
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "虚空天机计算盘 V4.1.0",
+        "title": "虚空天机计算盘 V4.1.1",
         "width": 1180,
         "height": 820,
         "minWidth": 640,

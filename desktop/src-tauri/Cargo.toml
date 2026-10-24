@@ -1,6 +1,6 @@
 [package]
 name = "cyber-dice"
-version = "4.1.0"
+version = "4.1.1"
 description = "虚空天机计算盘 macOS 桌面版"
 authors = ["zhizi10086"]
 edition = "2021"

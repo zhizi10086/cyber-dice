@@ -20,8 +20,8 @@
     "path": "../_内部文档/android-signing/cyber-dice-release.jks",
     "alias": "cyber-dice"
   },
-  "appVersionName": "4.1.0",
-  "appVersionCode": 41000,
+  "appVersionName": "4.1.1",
+  "appVersionCode": 41100,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://zhizi10086.github.io/cyber-dice/manifest.json",
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "4.1.0"
+  "appVersion": "4.1.1"
 }

@@ -192,6 +192,15 @@ input:focus-visible {
   content: "//";
 }
 
+#random-source-status.is-unavailable {
+  color: var(--bad);
+  font-weight: 700;
+}
+
+#random-source-status.is-unavailable::before {
+  color: var(--bad);
+}
+
 .console {
   display: grid;
   grid-template-columns: minmax(285px, 0.76fr) minmax(0, 1.55fr);
@@ -466,6 +475,16 @@ h2 {
   color: var(--muted);
   font-size: 0.83rem;
   line-height: 1.8;
+}
+
+.random-source-note {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 111, 132, 0.48);
+  color: #ffc0c9;
+  background: rgba(255, 60, 90, 0.065);
+  font-size: 0.72rem;
+  line-height: 1.65;
 }
 
 .primary-button,
@@ -2326,9 +2345,10 @@ h2 {
 
 .footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
+  gap: 10px 24px;
   margin-top: 20px;
   padding: 14px 0 0;
   color: rgba(126, 170, 158, 0.54);
@@ -2419,6 +2439,61 @@ h2 {
   font-size: 0.48rem;
   line-height: 1.4;
   white-space: nowrap;
+}
+
+.fairness-notes {
+  width: 100%;
+  flex: 1 0 100%;
+  margin-top: 2px;
+  color: var(--muted);
+  border: 1px solid rgba(103, 255, 210, 0.12);
+  background: rgba(0, 0, 0, 0.13);
+}
+
+.fairness-notes > summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  cursor: pointer;
+  color: var(--mint-dim);
+  list-style: none;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+}
+
+.fairness-notes > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fairness-notes > summary::after {
+  color: var(--mint);
+  content: "⌄";
+  font: 0.8rem/1 var(--mono);
+  transition: transform 160ms ease;
+}
+
+.fairness-notes[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.fairness-notes[open] > summary {
+  color: var(--mint-bright);
+  border-bottom: 1px solid rgba(103, 255, 210, 0.1);
+}
+
+.fairness-notes__body {
+  display: grid;
+  gap: 9px;
+  padding: 12px 14px 14px;
+  font-size: 0.67rem;
+  line-height: 1.75;
+}
+
+.fairness-notes__body p {
+  margin: 0;
 }
 
 .sr-only {
@@ -2808,6 +2883,10 @@ h2 {
   .footer__downloads-title,
   .footer__ios-note {
     text-align: left;
+  }
+
+  .fairness-notes {
+    flex-basis: 100%;
   }
 
   .forma-sacrifice {
