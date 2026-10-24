@@ -1146,16 +1146,20 @@ h2 {
 }
 
 .archive-section {
+  min-width: 0;
+  max-width: 100%;
   margin-top: 20px;
 }
 
 .archive {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--line);
   background: rgba(3, 15, 12, 0.82);
   box-shadow: var(--shadow);
 }
 
-.archive summary {
+.archive > summary {
   display: flex;
   min-height: 54px;
   align-items: center;
@@ -1169,18 +1173,18 @@ h2 {
   letter-spacing: 0.08em;
 }
 
-.archive summary::-webkit-details-marker {
+.archive > summary::-webkit-details-marker {
   display: none;
 }
 
-.archive summary::after {
+.archive > summary::after {
   color: var(--mint);
   content: "⌄";
   font: 1rem/1 var(--mono);
   transition: transform 160ms ease;
 }
 
-.archive[open] summary::after {
+.archive[open] > summary::after {
   transform: rotate(180deg);
 }
 
@@ -1191,8 +1195,12 @@ h2 {
 }
 
 .archive__body {
+  min-width: 0;
+  max-width: 100%;
   padding: 0 17px 17px;
   border-top: 1px solid var(--line);
+  container-name: history-archive;
+  container-type: inline-size;
 }
 
 .archive-filters {
@@ -1252,6 +1260,8 @@ h2 {
 
 .history-list {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 8px;
   margin: 16px 0;
   padding: 0;
@@ -1260,9 +1270,12 @@ h2 {
 
 .history-item {
   min-width: 0;
+  max-width: 100%;
 }
 
 .history-entry {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid rgba(103, 255, 210, 0.11);
   background: rgba(0, 0, 0, 0.16);
 }
@@ -1273,7 +1286,18 @@ h2 {
 
 .history-entry__summary {
   display: grid;
-  grid-template-columns: auto auto auto auto auto minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-areas: "time mode scene score tone verdict toggle";
+  grid-template-columns:
+    auto
+    auto
+    minmax(0, 1fr)
+    auto
+    auto
+    minmax(0, 2fr)
+    auto;
   gap: 8px 12px;
   align-items: baseline;
   padding: 10px 11px;
@@ -1287,6 +1311,9 @@ h2 {
 }
 
 .history-entry__summary::after {
+  grid-area: toggle;
+  justify-self: end;
+  align-self: start;
   color: var(--mint-dim);
   content: "⌄";
   font: 0.72rem/1 var(--mono);
@@ -1298,21 +1325,27 @@ h2 {
 }
 
 .history-entry__time {
+  min-width: 0;
+  grid-area: time;
   color: var(--mint-dim);
   font: 0.65rem/1.4 var(--mono);
   white-space: nowrap;
 }
 
 .history-entry__mode {
+  grid-area: mode;
   color: var(--mint);
   font: 0.65rem/1.4 var(--mono);
 }
 
 .history-entry__scene {
-  white-space: nowrap;
+  min-width: 0;
+  grid-area: scene;
+  overflow-wrap: anywhere;
 }
 
 .history-entry__score {
+  grid-area: score;
   color: var(--text);
   font: 0.72rem/1.4 var(--mono);
   white-space: nowrap;
@@ -1320,6 +1353,7 @@ h2 {
 
 .history-entry__tone {
   min-width: 24px;
+  grid-area: tone;
   padding: 2px 4px;
   border: 1px solid currentColor;
   font-size: 0.58rem;
@@ -1340,10 +1374,17 @@ h2 {
 }
 
 .history-entry__verdict {
+  min-width: 0;
+  max-width: 100%;
+  grid-area: verdict;
   color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .history-entry__details {
+  min-width: 0;
+  max-width: 100%;
   padding: 0 11px 12px;
   border-top: 1px solid rgba(103, 255, 210, 0.08);
 }
@@ -1369,6 +1410,8 @@ h2 {
 
 .history-dice {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-top: 10px;
@@ -1376,6 +1419,8 @@ h2 {
 
 .history-die {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 8px;
   padding: 7px 8px;
@@ -1413,9 +1458,34 @@ h2 {
 
 .history-entry__actions {
   display: flex;
+  max-width: 100%;
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 11px;
+}
+
+@container history-archive (max-width: 620px) {
+  .history-entry__summary {
+    grid-template-areas:
+      "time mode tone toggle"
+      "scene scene score score"
+      "verdict verdict verdict verdict";
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto
+      auto
+      auto;
+    gap: 7px 8px;
+    align-items: center;
+  }
+
+  .history-entry__summary::after {
+    align-self: center;
+  }
+
+  .history-entry__score {
+    justify-self: end;
+  }
 }
 
 .history-action {
@@ -2060,14 +2130,6 @@ h2 {
   .scene-tab {
     min-height: 50px;
     font-size: 0.68rem;
-  }
-
-  .history-entry__summary {
-    grid-template-columns: auto auto auto auto;
-  }
-
-  .history-entry__verdict {
-    grid-column: 1 / -1;
   }
 
   .history-dice {
