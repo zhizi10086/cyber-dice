@@ -9,6 +9,8 @@
 - macOS 离线版：<https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-macOS-universal.dmg>
 - Android 版：<https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-android.apk>
 
+网页底部同样提供以上三个稳定下载入口；iPhone/iPad 请使用 Safari 的“添加到主屏幕”安装 PWA。
+
 ## 网页开发
 
 直接用现代浏览器打开 `index.html` 即可。页面没有框架、构建步骤、CDN 或外部字体依赖。

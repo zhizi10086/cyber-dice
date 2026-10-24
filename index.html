@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="天机骰">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=4.0.0-r3">
+  <link rel="stylesheet" href="styles.css?v=4.0.0-r4">
 </head>
 <body>
   <div class="ambient-grid" aria-hidden="true"></div>
@@ -281,15 +281,42 @@
         <span>VOID ORACLE // 六骰归一化判定</span>
         <span>仅供娱乐 · 结果不构成现实建议</span>
       </div>
-      <a
-        class="footer__download"
-        id="offline-download"
-        href="https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-win-x64.exe"
+      <nav
+        class="footer__downloads"
+        id="offline-downloads"
+        aria-label="下载多端版本"
         data-online-only
       >
-        <span>WINDOWS 离线版</span>
-        <span class="footer__download-meta" aria-hidden="true">X64 / EXE ↓</span>
-      </a>
+        <p class="footer__downloads-title">MULTI-PLATFORM // 多端下载</p>
+        <div class="footer__download-grid">
+          <a
+            class="footer__download"
+            id="offline-download"
+            href="https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-win-x64.exe"
+            aria-label="下载 Windows 离线版"
+          >
+            <span class="footer__download-name">WINDOWS</span>
+            <span class="footer__download-meta" aria-hidden="true">X64 / EXE ↓</span>
+          </a>
+          <a
+            class="footer__download"
+            href="https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-macOS-universal.dmg"
+            aria-label="下载 macOS 离线版"
+          >
+            <span class="footer__download-name">MACOS</span>
+            <span class="footer__download-meta" aria-hidden="true">UNIVERSAL / DMG ↓</span>
+          </a>
+          <a
+            class="footer__download"
+            href="https://github.com/zhizi10086/cyber-dice/releases/latest/download/Cyber-Dice-android.apk"
+            aria-label="下载 Android 安装包"
+          >
+            <span class="footer__download-name">ANDROID</span>
+            <span class="footer__download-meta" aria-hidden="true">API 24+ / APK ↓</span>
+          </a>
+        </div>
+        <p class="footer__ios-note">iOS / iPadOS：Safari → 添加到主屏幕</p>
+      </nav>
     </footer>
   </div>
 
@@ -391,8 +418,8 @@
     </article>
   </template>
 
-  <script src="vendor/qrcode-generator.js?v=4.0.0-r3"></script>
-  <script src="vendor/html2canvas.min.js?v=4.0.0-r3"></script>
-  <script src="app.js?v=4.0.0-r3"></script>
+  <script src="vendor/qrcode-generator.js?v=4.0.0-r4"></script>
+  <script src="vendor/html2canvas.min.js?v=4.0.0-r4"></script>
+  <script src="app.js?v=4.0.0-r4"></script>
 </body>
 </html>
