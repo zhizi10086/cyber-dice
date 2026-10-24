@@ -9,10 +9,17 @@ IDR_INDEX_HTML RCDATA "../index.html"
 IDR_STYLES_CSS RCDATA "../styles.css"
 IDR_APP_JS RCDATA "../app.js"
 IDR_FORMA_PNG RCDATA "../assets/forma.png"
+IDR_QRCODE_JS RCDATA "../vendor/qrcode-generator.js"
+IDR_HTML2CANVAS_JS RCDATA "../vendor/html2canvas.min.js"
+IDR_MANIFEST_JSON RCDATA "../manifest.json"
+IDR_SERVICE_WORKER_JS RCDATA "../sw.js"
+IDR_ICON_192_PNG RCDATA "../assets/icon-192.png"
+IDR_ICON_512_PNG RCDATA "../assets/icon-512.png"
+IDR_APPLE_TOUCH_PNG RCDATA "../assets/apple-touch-icon.png"
 
 1 VERSIONINFO
- FILEVERSION 3,1,0,0
- PRODUCTVERSION 3,1,0,0
+ FILEVERSION 3,1,1,0
+ PRODUCTVERSION 3,1,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS VS_FF_DEBUG
@@ -29,12 +36,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "zhizi10086"
             VALUE "FileDescription", "虚空天机计算盘离线版"
-            VALUE "FileVersion", "3.1.0.0"
+            VALUE "FileVersion", "3.1.1.0"
             VALUE "InternalName", "CyberDice"
             VALUE "LegalCopyright", "Copyright (C) 2026 zhizi10086"
             VALUE "OriginalFilename", "Cyber-Dice-win-x64.exe"
             VALUE "ProductName", "虚空天机计算盘"
-            VALUE "ProductVersion", "3.1.0"
+            VALUE "ProductVersion", "3.1.1"
         END
     END
     BLOCK "VarFileInfo"

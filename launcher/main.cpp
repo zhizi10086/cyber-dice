@@ -21,12 +21,12 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V3.1";
+constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V3.1.1";
 constexpr wchar_t kWindowClass[] = L"CyberDice.NativeWindow";
-constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-3.1.html";
+constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-3.1.1.html";
 constexpr wchar_t kVirtualHost[] = L"cyber-dice.local";
 constexpr wchar_t kVirtualUrl[] = L"https://cyber-dice.local/index.html";
-constexpr wchar_t kAssetVersion[] = L"3.1";
+constexpr wchar_t kAssetVersion[] = L"3.1.1";
 constexpr int kDefaultClientWidth = 1180;
 constexpr int kDefaultClientHeight = 820;
 constexpr int kMinimumClientWidth = 640;
@@ -112,6 +112,12 @@ std::string BuildEmbeddedDocument() {
   std::string html = LoadResourceString(IDR_INDEX_HTML);
   const std::string css = LoadResourceString(IDR_STYLES_CSS);
   const std::string javaScript = LoadResourceString(IDR_APP_JS);
+  const std::string qrCodeJavaScript =
+      LoadResourceString(IDR_QRCODE_JS);
+  const std::string html2CanvasJavaScript =
+      LoadResourceString(IDR_HTML2CANVAS_JS);
+  const std::vector<char> appleTouchIcon =
+      LoadResourceBytes(IDR_APPLE_TOUCH_PNG);
   const std::vector<char> formaImage = LoadResourceBytes(IDR_FORMA_PNG);
 
   const bool cssInjected = ReplaceOnce(
@@ -120,12 +126,26 @@ std::string BuildEmbeddedDocument() {
   const bool scriptInjected = ReplaceOnce(
       html, R"(  <script src="app.js"></script>)",
       "  <script>\n" + javaScript + "\n  </script>");
+  const bool qrCodeInjected = ReplaceOnce(
+      html, R"(  <script src="vendor/qrcode-generator.js"></script>)",
+      "  <script>\n" + qrCodeJavaScript + "\n  </script>");
+  const bool html2CanvasInjected = ReplaceOnce(
+      html, R"(  <script src="vendor/html2canvas.min.js"></script>)",
+      "  <script>\n" + html2CanvasJavaScript + "\n  </script>");
   const bool imageInjected = ReplaceOnce(
       html, R"(src="assets/forma.png")",
       "src=\"data:image/png;base64," + Base64Encode(formaImage) + "\"");
+  const bool appleIconInjected = ReplaceOnce(
+      html, R"(href="assets/apple-touch-icon.png")",
+      "href=\"data:image/png;base64," +
+          Base64Encode(appleTouchIcon) + "\"");
+  ReplaceOnce(
+      html, R"(  <link rel="manifest" href="manifest.json">)",
+      "");
 
-  if (!cssInjected || !scriptInjected || !imageInjected ||
-      formaImage.empty()) {
+  if (!cssInjected || !scriptInjected || !qrCodeInjected ||
+      !html2CanvasInjected || !imageInjected || !appleIconInjected ||
+      formaImage.empty() || appleTouchIcon.empty()) {
     MessageBoxW(nullptr,
                 L"内嵌网页资源不完整，请重新构建离线版。",
                 kWindowTitle, MB_OK | MB_ICONERROR);
@@ -179,8 +199,13 @@ std::filesystem::path PrepareVirtualHostDirectory() {
   const std::filesystem::path webDirectory =
       GetLocalAppDataPath() / L"CyberDice" / L"Web" / kAssetVersion;
   const std::filesystem::path assetsDirectory = webDirectory / L"assets";
+  const std::filesystem::path vendorDirectory = webDirectory / L"vendor";
   std::error_code error;
   std::filesystem::create_directories(assetsDirectory, error);
+  if (error) {
+    return {};
+  }
+  std::filesystem::create_directories(vendorDirectory, error);
   if (error) {
     return {};
   }
@@ -188,14 +213,37 @@ std::filesystem::path PrepareVirtualHostDirectory() {
   const std::string html = LoadResourceString(IDR_INDEX_HTML);
   const std::string css = LoadResourceString(IDR_STYLES_CSS);
   const std::string javaScript = LoadResourceString(IDR_APP_JS);
+  const std::string qrCodeJavaScript =
+      LoadResourceString(IDR_QRCODE_JS);
+  const std::string html2CanvasJavaScript =
+      LoadResourceString(IDR_HTML2CANVAS_JS);
+  const std::string manifest = LoadResourceString(IDR_MANIFEST_JSON);
+  const std::string serviceWorker =
+      LoadResourceString(IDR_SERVICE_WORKER_JS);
   const std::vector<char> formaImage = LoadResourceBytes(IDR_FORMA_PNG);
+  const std::vector<char> icon192 = LoadResourceBytes(IDR_ICON_192_PNG);
+  const std::vector<char> icon512 = LoadResourceBytes(IDR_ICON_512_PNG);
+  const std::vector<char> appleTouchIcon =
+      LoadResourceBytes(IDR_APPLE_TOUCH_PNG);
 
   if (html.empty() || css.empty() || javaScript.empty() ||
-      formaImage.empty() ||
+      qrCodeJavaScript.empty() || html2CanvasJavaScript.empty() ||
+      manifest.empty() || serviceWorker.empty() || formaImage.empty() ||
+      icon192.empty() || icon512.empty() || appleTouchIcon.empty() ||
       !WriteUtf8File(webDirectory / L"index.html", html) ||
       !WriteUtf8File(webDirectory / L"styles.css", css) ||
       !WriteUtf8File(webDirectory / L"app.js", javaScript) ||
-      !WriteBinaryFile(assetsDirectory / L"forma.png", formaImage)) {
+      !WriteUtf8File(webDirectory / L"manifest.json", manifest) ||
+      !WriteUtf8File(webDirectory / L"sw.js", serviceWorker) ||
+      !WriteUtf8File(vendorDirectory / L"qrcode-generator.js",
+                     qrCodeJavaScript) ||
+      !WriteUtf8File(vendorDirectory / L"html2canvas.min.js",
+                     html2CanvasJavaScript) ||
+      !WriteBinaryFile(assetsDirectory / L"forma.png", formaImage) ||
+      !WriteBinaryFile(assetsDirectory / L"icon-192.png", icon192) ||
+      !WriteBinaryFile(assetsDirectory / L"icon-512.png", icon512) ||
+      !WriteBinaryFile(assetsDirectory / L"apple-touch-icon.png",
+                       appleTouchIcon)) {
     return {};
   }
 

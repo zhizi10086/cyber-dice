@@ -9,27 +9,29 @@
   const VERDICT_DELAY_MS = 500;
   const TOAST_DURATION_MS = 2400;
   const WARNING_FLASH_DURATION_MS = 1200;
+  const SHARE_BASE_URL = "https://zhizi10086.github.io/cyber-dice/";
+  const DEFAULT_CARD_NAME = "无名道友";
 
   const CONFIG = {
     scenes: {
       relic: {
         id: "relic",
         label: "开核桃",
-        icon: "📦",
+        shareKey: "relic",
         goodWhisper: "（虚空低语：金部件已在向你招手。）",
         badWhisper: "（虚空低语：光辉车必出福马，切勿浪费遗物。）",
       },
       riven: {
         id: "riven",
         label: "洗紫卡",
-        icon: "🔮",
+        shareKey: "kuva",
         goodWhisper: "（赤毒赐福：极易洗出极品词条，大胆重随。）",
         badWhisper: "（赤毒警示：天道无常，今日切勿死磕。）",
       },
       lich: {
         id: "lich",
         label: "捅玄骸",
-        icon: "💀",
+        shareKey: "lich",
         goodWhisper: "（天命指引：第一刀必中，大胆盲刀。）",
         badWhisper: "（解密提示：煞气极重，密码极易试错，谨慎出刀。）",
       },
@@ -62,6 +64,7 @@
     storage: {
       historyKey: "cyberDice.history.v1",
       rollTimesKey: "cyberDice.rollTimes.v1",
+      cardNameKey: "cyberDice.cardName.v1",
       historyLimit: 5,
       addictionWindowMs: 300000,
       addictionThreshold: 3,
@@ -143,6 +146,7 @@
     manualForm: document.querySelector("#manual-form"),
     manualFields: document.querySelector("#manual-fields"),
     formError: document.querySelector("#form-error"),
+    manualSubmit: document.querySelector('#manual-form button[type="submit"]'),
     resetManual: document.querySelector("#reset-manual"),
     oracleIdle: document.querySelector("#oracle-idle"),
     results: document.querySelector("#results"),
@@ -154,6 +158,8 @@
     overallVerdict: document.querySelector("#overall-verdict"),
     sceneWhisper: document.querySelector("#scene-whisper"),
     copyReport: document.querySelector("#copy-report"),
+    copyShareLink: document.querySelector("#copy-share-link"),
+    generateCard: document.querySelector("#generate-card"),
     extremeWarning: document.querySelector("#extreme-warning"),
     addictionWarning: document.querySelector("#addiction-warning"),
     warningFlash: document.querySelector("#warning-flash"),
@@ -169,6 +175,22 @@
     clearHistoryDialog: document.querySelector("#clear-history-dialog"),
     cancelClearHistory: document.querySelector("#cancel-clear-history"),
     confirmClearHistory: document.querySelector("#confirm-clear-history"),
+    sharedBanner: document.querySelector("#shared-banner"),
+    exitSharedView: document.querySelector("#exit-shared-view"),
+    cardNameDialog: document.querySelector("#card-name-dialog"),
+    cardNameForm: document.querySelector("#card-name-form"),
+    cardNameInput: document.querySelector("#card-name-input"),
+    cancelCardName: document.querySelector("#cancel-card-name"),
+    cardSealName: document.querySelector("#card-seal-name"),
+    cardScene: document.querySelector("#card-scene"),
+    cardAchievement: document.querySelector("#card-achievement"),
+    cardDiceList: document.querySelector("#card-dice-list"),
+    cardOverallScore: document.querySelector("#card-overall-score"),
+    cardVerdict: document.querySelector("#card-verdict"),
+    cardWhisper: document.querySelector("#card-whisper"),
+    cardQrCode: document.querySelector("#card-qr-code"),
+    cardShareUrl: document.querySelector("#card-share-url"),
+    oracleCard: document.querySelector("#oracle-card"),
     readoutState: document.querySelector("#readout-state"),
     announcer: document.querySelector("#announcer"),
     dieTemplate: document.querySelector("#die-card-template"),
@@ -179,6 +201,8 @@
   let activeMode = "auto";
   let activeScene = "relic";
   let isRolling = false;
+  let isSharedView = false;
+  let sharedExitNotice = "";
   let revealTimeouts = [];
   let revealIntervals = [];
   let toastTimeout = null;
@@ -186,6 +210,7 @@
   let activeResult = null;
   let formaTapCount = 0;
   let formaToastShown = false;
+  let isGeneratingCard = false;
 
   function createStorageAdapter() {
     const memory = new Map();
@@ -288,6 +313,7 @@
       mode,
       achievement,
       whisper,
+      shouldRecord: true,
     };
   }
 
@@ -325,7 +351,7 @@
 
     lines.push(
       "📜【虚空天机签】",
-      `【场景】${result.scene.icon} ${result.scene.label}`,
+      `【场景】${result.scene.label}`,
       ...diceLines,
       "------------------------",
       `【综合天机】 ${formatSigned(result.overall)}`,
@@ -337,6 +363,61 @@
     }
 
     return lines.join("\n");
+  }
+
+  function buildShareUrl(result) {
+    const url = new URL(SHARE_BASE_URL);
+    url.searchParams.set("mode", result.scene.shareKey);
+
+    DICE.forEach((die) => {
+      url.searchParams.set(
+        die.id.toLowerCase(),
+        String(result.byId[die.id].roll),
+      );
+    });
+
+    return url.href;
+  }
+
+  function parseSharedState() {
+    const params = new URLSearchParams(location.search);
+    const modeValues = params.getAll("mode");
+    if (modeValues.length !== 1) {
+      return null;
+    }
+
+    const mode = modeValues[0];
+    const scene = Object.values(CONFIG.scenes)
+      .find((candidate) => candidate.shareKey === mode);
+
+    if (!scene) {
+      return null;
+    }
+
+    const rolls = [];
+    for (const die of DICE) {
+      const parameterName = die.id.toLowerCase();
+      const values = params.getAll(parameterName);
+      if (values.length !== 1) {
+        return null;
+      }
+
+      const rawValue = values[0];
+      if (!/^\d+$/.test(rawValue)) {
+        return null;
+      }
+
+      const roll = Number(rawValue);
+      if (!Number.isInteger(roll) || roll < 1 || roll > die.sides) {
+        return null;
+      }
+      rolls.push(roll);
+    }
+
+    return {
+      sceneId: scene.id,
+      rolls,
+    };
   }
 
   function getHistoryEntries() {
@@ -406,7 +487,7 @@
 
       const sceneLabel = document.createElement("span");
       sceneLabel.className = "history-entry__scene";
-      sceneLabel.textContent = `${scene.icon} ${scene.label}`;
+      sceneLabel.textContent = scene.label;
 
       const score = document.createElement("strong");
       score.className = "history-entry__score";
@@ -545,6 +626,161 @@
       showToast("战报已复制，快去群里对线。");
     } catch {
       showToast("战报复制失败，请稍后重试。", "error");
+    }
+  }
+
+  async function copyShareLink() {
+    if (!activeResult) {
+      return;
+    }
+
+    try {
+      await writeClipboard(buildShareUrl(activeResult));
+      showToast("本卦链接已复制。");
+    } catch {
+      showToast("链接复制失败，请稍后重试。", "error");
+    }
+  }
+
+  function sanitizeCardName(value) {
+    const normalized = String(value).trim().replace(/\s+/g, " ");
+    if (!normalized) {
+      return DEFAULT_CARD_NAME;
+    }
+
+    return Array.from(normalized).slice(0, 12).join("");
+  }
+
+  function openCardNameDialog() {
+    if (!activeResult || isGeneratingCard) {
+      return;
+    }
+
+    const storedName = storage.read(
+      CONFIG.storage.cardNameKey,
+      DEFAULT_CARD_NAME,
+    );
+    elements.cardNameInput.value =
+      typeof storedName === "string" && storedName.trim()
+        ? sanitizeCardName(storedName)
+        : DEFAULT_CARD_NAME;
+    elements.cardNameDialog.showModal();
+    window.requestAnimationFrame(() => {
+      elements.cardNameInput.focus();
+      elements.cardNameInput.select();
+    });
+  }
+
+  function renderExportCard(result, cardName) {
+    const shareUrl = buildShareUrl(result);
+    elements.cardSealName.textContent = cardName;
+    elements.cardScene.textContent = result.scene.label;
+    elements.cardAchievement.hidden = !result.achievement;
+    elements.cardAchievement.textContent = result.achievement
+      ? `成就解锁：${result.achievement.name}`
+      : "";
+    elements.cardOverallScore.textContent = formatSigned(result.overall);
+    elements.cardVerdict.textContent = result.verdict.text;
+    elements.cardWhisper.hidden = !result.whisper;
+    elements.cardWhisper.textContent = result.whisper;
+    elements.cardShareUrl.textContent = shareUrl;
+    elements.cardDiceList.replaceChildren();
+
+    result.results.forEach(({ die, roll, state, flavor }) => {
+      const item = document.createElement("li");
+      const identity = document.createElement("span");
+      const value = document.createElement("strong");
+      const status = document.createElement("span");
+      const text = document.createElement("span");
+
+      identity.textContent = `${die.id} ${die.role}`;
+      value.textContent = String(roll);
+      status.textContent = STATE_NAMES[state];
+      text.textContent = `${flavor}${die.reverse ? "（反）" : ""}`;
+      status.dataset.state = STATE_KEYS[state];
+      item.append(identity, value, status, text);
+      elements.cardDiceList.append(item);
+    });
+
+    const qr = qrcode(0, "M");
+    qr.addData(shareUrl, "Byte");
+    qr.make();
+    elements.cardQrCode.src = qr.createDataURL(6, 24);
+    return shareUrl;
+  }
+
+  async function waitForImage(image) {
+    if (image.complete && image.naturalWidth > 0) {
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      image.addEventListener("load", resolve, { once: true });
+      image.addEventListener("error", reject, { once: true });
+    });
+  }
+
+  function downloadCanvas(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Card image generation returned an empty blob."));
+          return;
+        }
+
+        const now = new Date();
+        const pad = (value) => String(value).padStart(2, "0");
+        const filename =
+          `tianji-card-${now.getFullYear()}${pad(now.getMonth() + 1)}` +
+          `${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}` +
+          `${pad(now.getSeconds())}.png`;
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        resolve();
+      }, "image/png");
+    });
+  }
+
+  async function generateCardImage(cardName) {
+    if (!activeResult || isGeneratingCard) {
+      return;
+    }
+
+    isGeneratingCard = true;
+    elements.generateCard.disabled = true;
+
+    try {
+      if (typeof window.html2canvas !== "function" || typeof window.qrcode !== "function") {
+        throw new Error("Card generation libraries are unavailable.");
+      }
+
+      renderExportCard(activeResult, cardName);
+      await waitForImage(elements.cardQrCode);
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+
+      const canvas = await window.html2canvas(elements.oracleCard, {
+        backgroundColor: "#020908",
+        logging: false,
+        scale: 1,
+        useCORS: false,
+        width: 750,
+        height: 1334,
+        windowWidth: 750,
+        windowHeight: 1334,
+      });
+      await downloadCanvas(canvas);
+      showToast("天机卡牌已生成。");
+    } catch {
+      showToast("天机卡牌生成失败，请稍后重试。", "error");
+    } finally {
+      isGeneratingCard = false;
+      elements.generateCard.disabled = false;
     }
   }
 
@@ -692,6 +928,12 @@
   }
 
   function updateStepperState(field) {
+    if (field.input.disabled) {
+      field.decrease.disabled = true;
+      field.increase.disabled = true;
+      return;
+    }
+
     const rawValue = field.input.value.trim();
     const numericValue = Number(rawValue);
     const hasIntegerValue = rawValue !== "" && Number.isInteger(numericValue);
@@ -701,6 +943,10 @@
   }
 
   function adjustManualValue(field, delta) {
+    if (field.input.disabled) {
+      return;
+    }
+
     const rawValue = field.input.value.trim();
     const numericValue = Number(rawValue);
     const hadValidValue = rawValue !== "" && Number.isInteger(numericValue);
@@ -790,6 +1036,8 @@
     elements.overallCard.classList.remove("is-revealing");
     elements.overallCard.hidden = true;
     elements.copyReport.disabled = true;
+    elements.copyShareLink.disabled = true;
+    elements.generateCard.disabled = true;
     elements.extremeWarning.hidden = true;
     elements.addictionWarning.hidden = true;
     elements.sceneWhisper.hidden = true;
@@ -816,7 +1064,9 @@
 
   function renderOverall(result, animateReveal) {
     activeResult = result;
-    const addictionTriggered = recordResult(result);
+    const addictionTriggered = result.shouldRecord
+      ? recordResult(result)
+      : false;
     elements.overallCard.dataset.verdict = result.verdict.tone;
     elements.overallScore.textContent = formatSigned(result.overall);
     elements.overallVerdict.textContent = result.verdict.text;
@@ -828,6 +1078,8 @@
     elements.achievementBanner.hidden = !result.achievement;
     elements.achievementBanner.classList.remove("is-revealing");
     elements.copyReport.disabled = false;
+    elements.copyShareLink.disabled = false;
+    elements.generateCard.disabled = false;
     elements.extremeWarning.hidden = !result.extremeWarning;
     elements.addictionWarning.hidden = !addictionTriggered;
     elements.overallCard.hidden = false;
@@ -969,8 +1221,62 @@
     elements.sceneWhisper.hidden = true;
     elements.addictionWarning.hidden = true;
     elements.copyReport.disabled = true;
+    elements.copyShareLink.disabled = true;
+    elements.generateCard.disabled = true;
     resetFormaInteraction();
     elements.announcer.textContent = "";
+  }
+
+  function setManualInputsDisabled(disabled) {
+    manualInputs.forEach((field) => {
+      field.input.disabled = disabled;
+      updateStepperState(field);
+    });
+  }
+
+  function setSharedControlsDisabled(disabled) {
+    elements.tabs.forEach((tab) => {
+      tab.disabled = disabled;
+    });
+    elements.sceneTabs.forEach((tab) => {
+      tab.disabled = disabled;
+    });
+    elements.rollAuto.disabled = disabled;
+    elements.manualSubmit.disabled = disabled;
+    elements.resetManual.disabled = disabled;
+    setManualInputsDisabled(disabled);
+  }
+
+  function enterSharedView(shared) {
+    isSharedView = true;
+    activateMode("manual");
+    activateScene(shared.sceneId);
+
+    DICE.forEach((die, index) => {
+      manualInputs.get(die.id).input.value = String(shared.rolls[index]);
+      updateStepperState(manualInputs.get(die.id));
+    });
+
+    setSharedControlsDisabled(true);
+    elements.sharedBanner.hidden = false;
+    const result = calculateAll(shared.rolls, shared.sceneId, "manual");
+    result.shouldRecord = false;
+    showResults(result, true);
+  }
+
+  function exitSharedView() {
+    if (!isSharedView) {
+      return;
+    }
+
+    isSharedView = false;
+    const url = new URL(location.href);
+    url.search = "";
+    history.replaceState({}, "", url);
+    elements.sharedBanner.hidden = true;
+    setSharedControlsDisabled(false);
+    resetResults();
+    elements.announcer.textContent = "分享回放已结束，可以开始自己的推演。";
   }
 
   function resetManualForm() {
@@ -1084,6 +1390,25 @@
     });
   }
 
+  function registerServiceWorker() {
+    const isLocalDevelopment =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const canRegister =
+      "serviceWorker" in navigator &&
+      location.hostname !== "cyber-dice.local" &&
+      (location.protocol === "https:" || isLocalDevelopment);
+
+    if (!canRegister) {
+      return;
+    }
+
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => {
+        // PWA 注册失败不影响在线起卦与卡牌功能。
+      });
+    });
+  }
+
   elements.tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateMode(tab.dataset.mode));
     tab.addEventListener("keydown", handleTabKeydown);
@@ -1094,6 +1419,8 @@
   });
   elements.rollAuto.addEventListener("click", startAutoRoll);
   elements.copyReport.addEventListener("click", copyBattleReport);
+  elements.copyShareLink.addEventListener("click", copyShareLink);
+  elements.generateCard.addEventListener("click", openCardNameDialog);
   elements.formaSacrifice.addEventListener("click", handleFormaTap);
   elements.manualForm.addEventListener("submit", submitManual);
   elements.resetManual.addEventListener("click", resetManualForm);
@@ -1116,9 +1443,35 @@
       elements.clearHistoryDialog.close();
     }
   });
+  elements.exitSharedView.addEventListener("click", exitSharedView);
+  elements.cancelCardName.addEventListener("click", () => {
+    elements.cardNameDialog.close();
+  });
+  elements.cardNameForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!activeResult) {
+      elements.cardNameDialog.close();
+      return;
+    }
+
+    const cardName = sanitizeCardName(elements.cardNameInput.value);
+    storage.write(CONFIG.storage.cardNameKey, cardName);
+    elements.cardNameDialog.close();
+    void generateCardImage(cardName);
+  });
+  elements.cardNameDialog.addEventListener("click", (event) => {
+    if (event.target === elements.cardNameDialog) {
+      elements.cardNameDialog.close();
+    }
+  });
 
   configureOnlineOnlyLinks();
   elements.historyStorageNote.hidden = storage.persistent;
   renderHistory();
   createManualFields();
+  const sharedState = parseSharedState();
+  if (sharedState) {
+    enterSharedView(sharedState);
+  }
+  registerServiceWorker();
 })();

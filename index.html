@@ -4,8 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#020908">
-  <meta name="description" content="虚空天机计算盘 V3.1：按 Warframe 场景起卦，生成可分享的天机战报并记录天命档案。">
-  <title>虚空天机计算盘 V3.1</title>
+  <meta name="description" content="虚空天机计算盘 V3.1.1：按 Warframe 场景起卦，生成可分享的天机战报、卡牌与天命档案。">
+  <title>虚空天机计算盘 V3.1.1</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="天机骰">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -18,13 +23,13 @@
       <div class="system-line">
         <span class="status-light" aria-hidden="true"></span>
         <span>VOID ORACLE // SYSTEM ONLINE</span>
-        <span class="system-line__code">SYS.31</span>
+        <span class="system-line__code">SYS.311</span>
       </div>
 
       <h1>
         <span class="title-bracket" aria-hidden="true">[</span>
         虚空天机计算盘
-        <span class="title-version">V3.1</span>
+        <span class="title-version">V3.1.1</span>
         <span class="title-bracket" aria-hidden="true">]</span>
       </h1>
 
@@ -36,6 +41,14 @@
         <span>DEVIATION ±100</span>
       </div>
     </header>
+
+    <section class="shared-banner" id="shared-banner" aria-live="polite" hidden>
+      <div>
+        <p class="eyebrow">SHARED READING</p>
+        <strong>正在查看分享卦象</strong>
+      </div>
+      <button class="ghost-button" id="exit-shared-view" type="button">开始我的推演</button>
+    </section>
 
     <main class="console">
       <section class="control-panel" aria-labelledby="control-title">
@@ -57,7 +70,6 @@
               aria-checked="true"
               data-scene="relic"
             >
-              <span class="scene-tab__icon" aria-hidden="true">📦</span>
               <span>开核桃</span>
             </button>
             <button
@@ -68,7 +80,6 @@
               tabindex="-1"
               data-scene="riven"
             >
-              <span class="scene-tab__icon" aria-hidden="true">🔮</span>
               <span>洗紫卡</span>
             </button>
             <button
@@ -79,7 +90,6 @@
               tabindex="-1"
               data-scene="lich"
             >
-              <span class="scene-tab__icon" aria-hidden="true">💀</span>
               <span>捅玄骸</span>
             </button>
           </div>
@@ -199,6 +209,14 @@
                 <span aria-hidden="true">⧉</span>
                 <span>复制天机战报</span>
               </button>
+              <button class="copy-button" id="copy-share-link" type="button">
+                <span aria-hidden="true">⌁</span>
+                <span>复制本卦链接</span>
+              </button>
+              <button class="copy-button" id="generate-card" type="button">
+                <span aria-hidden="true">▣</span>
+                <span>生成天机卡牌</span>
+              </button>
             </div>
             <p class="extreme-warning" id="extreme-warning" role="alert" hidden>
               【警告】虚空煞气极重，强行起阵必遭反噬。
@@ -270,6 +288,59 @@
     </div>
   </dialog>
 
+  <dialog class="confirm-dialog card-name-dialog" id="card-name-dialog" aria-labelledby="card-name-title">
+    <form class="confirm-dialog__body" id="card-name-form">
+      <p class="eyebrow">ORACLE SIGNATURE</p>
+      <h2 id="card-name-title">题写法号</h2>
+      <p>法号只保存在当前设备，并会出现在导出的天机卡牌上。</p>
+      <label class="card-name-field" for="card-name-input">
+        <span>法号</span>
+        <input id="card-name-input" name="cardName" type="text" maxlength="12" autocomplete="nickname" value="无名道友">
+      </label>
+      <div class="confirm-dialog__actions">
+        <button class="ghost-button" id="cancel-card-name" type="button">取消</button>
+        <button class="primary-button" type="submit">生成卡牌</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="card-export-host" aria-hidden="true">
+    <article class="oracle-card" id="oracle-card">
+      <div class="oracle-card__frame">
+        <header class="oracle-card__header">
+          <span>VOID ORACLE</span>
+          <span>V3.1.1</span>
+        </header>
+        <p class="oracle-card__title">虚空天机签</p>
+        <p class="oracle-card__seal">法号：<strong id="card-seal-name">无名道友</strong></p>
+        <div class="oracle-card__scene">
+          <span>占卜场景</span>
+          <strong id="card-scene">开核桃</strong>
+        </div>
+        <p class="oracle-card__achievement" id="card-achievement" hidden></p>
+        <ol class="oracle-card__dice" id="card-dice-list"></ol>
+        <section class="oracle-card__result">
+          <span>综合天机</span>
+          <strong id="card-overall-score">+0.00</strong>
+        </section>
+        <section class="oracle-card__verdict">
+          <span>天师批语</span>
+          <strong id="card-verdict">等待推演</strong>
+        </section>
+        <p class="oracle-card__whisper" id="card-whisper" hidden></p>
+        <footer class="oracle-card__footer">
+          <div class="oracle-card__qr">
+            <img id="card-qr-code" alt="本卦分享链接二维码">
+          </div>
+          <div class="oracle-card__link">
+            <span>扫描查看本卦</span>
+            <small id="card-share-url"></small>
+          </div>
+        </footer>
+      </div>
+    </article>
+  </div>
+
   <noscript>
     <div class="noscript">此计算盘需要启用 JavaScript 才能推演。</div>
   </noscript>
@@ -295,6 +366,8 @@
     </article>
   </template>
 
+  <script src="vendor/qrcode-generator.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

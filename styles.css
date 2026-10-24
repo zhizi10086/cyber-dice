@@ -348,10 +348,6 @@ h2 {
   opacity: 0.48;
 }
 
-.scene-tab__icon {
-  font-size: 0.9rem;
-}
-
 .mode-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -624,6 +620,25 @@ h2 {
 
 .protocol-note p {
   margin: 0;
+}
+
+.shared-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(90deg, rgba(103, 255, 210, 0.08), transparent 70%),
+    rgba(2, 13, 10, 0.92);
+}
+
+.shared-banner strong {
+  color: var(--mint-bright);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
 }
 
 .oracle-idle {
@@ -1355,6 +1370,256 @@ h2 {
   gap: 9px;
 }
 
+.card-name-field {
+  display: grid;
+  gap: 7px;
+  margin: 16px 0 20px;
+  color: var(--mint-dim);
+  font-size: 0.7rem;
+}
+
+.card-name-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  outline: 0;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.24);
+  font: 0.86rem/1.3 var(--mono);
+}
+
+.card-name-field input:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 2px rgba(103, 255, 210, 0.07);
+}
+
+.card-export-host {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 750px;
+  height: 1334px;
+  pointer-events: none;
+}
+
+.oracle-card {
+  width: 750px;
+  height: 1334px;
+  padding: 34px;
+  color: #d9fff4;
+  background: #020908;
+  font-family: var(--sans);
+}
+
+.oracle-card__frame {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 30px;
+  border: 2px solid #67ffd2;
+  flex-direction: column;
+  background: #04110d;
+}
+
+.oracle-card__header {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  color: #78a99b;
+  border-bottom: 1px solid #1b5949;
+  font: 600 18px/1.3 var(--mono);
+  letter-spacing: 3px;
+}
+
+.oracle-card__title {
+  margin: 28px 0 8px;
+  color: #a9ffe8;
+  font: 700 52px/1.2 var(--sans);
+  letter-spacing: 8px;
+}
+
+.oracle-card__seal {
+  margin: 0 0 24px;
+  color: #78a99b;
+  font-size: 19px;
+  letter-spacing: 2px;
+}
+
+.oracle-card__seal strong {
+  color: #ffe7a3;
+  font-weight: 600;
+}
+
+.oracle-card__scene {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 17px;
+  border: 1px solid #1b5949;
+  background: #061a14;
+}
+
+.oracle-card__scene span {
+  color: #78a99b;
+  font-size: 16px;
+}
+
+.oracle-card__scene strong {
+  color: #67ffd2;
+  font-size: 24px;
+  letter-spacing: 4px;
+}
+
+.oracle-card__achievement {
+  margin: 16px 0 0;
+  padding: 12px 15px;
+  color: #ffe7a3;
+  border: 1px solid #8d7438;
+  background: #191708;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.oracle-card__dice {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oracle-card__dice li {
+  display: grid;
+  min-height: 64px;
+  grid-template-columns: 190px 74px 54px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  padding: 9px 13px;
+  border: 1px solid #124537;
+  background: #03100c;
+  font-size: 18px;
+}
+
+.oracle-card__dice li > span:first-child {
+  color: #78a99b;
+}
+
+.oracle-card__dice li > strong {
+  color: #ffffff;
+  font: 700 26px/1 var(--mono);
+}
+
+.oracle-card__dice li > span:nth-child(3) {
+  font-weight: 700;
+  text-align: center;
+}
+
+.oracle-card__dice [data-state="good"] {
+  color: #71ffc6;
+}
+
+.oracle-card__dice [data-state="neutral"] {
+  color: #f4c96b;
+}
+
+.oracle-card__dice [data-state="bad"] {
+  color: #ff6f84;
+}
+
+.oracle-card__result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border: 2px solid #67ffd2;
+  background: #061a14;
+}
+
+.oracle-card__result span {
+  color: #78a99b;
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+.oracle-card__result strong {
+  color: #67ffd2;
+  font: 700 54px/1 var(--mono);
+}
+
+.oracle-card__verdict {
+  display: grid;
+  gap: 7px;
+  padding: 17px 2px;
+}
+
+.oracle-card__verdict span {
+  color: #78a99b;
+  font-size: 16px;
+}
+
+.oracle-card__verdict strong {
+  color: #d9fff4;
+  font-size: 25px;
+  line-height: 1.45;
+  letter-spacing: 3px;
+}
+
+.oracle-card__whisper {
+  margin: 0 0 14px;
+  padding: 12px 15px;
+  color: #a9ffe8;
+  border-left: 3px solid #67ffd2;
+  background: #06140f;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.oracle-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #1b5949;
+}
+
+.oracle-card__qr {
+  display: grid;
+  flex: 0 0 170px;
+  width: 170px;
+  height: 170px;
+  padding: 9px;
+  place-items: center;
+  background: #ffffff;
+}
+
+.oracle-card__qr img {
+  display: block;
+  width: 152px;
+  height: 152px;
+}
+
+.oracle-card__link {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.oracle-card__link span {
+  color: #67ffd2;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+
+.oracle-card__link small {
+  color: #78a99b;
+  font: 14px/1.55 var(--mono);
+  overflow-wrap: anywhere;
+}
+
 .footer {
   display: flex;
   align-items: center;
@@ -1758,6 +2023,11 @@ h2 {
   }
 
   .button-row {
+    flex-direction: column;
+  }
+
+  .shared-banner {
+    align-items: stretch;
     flex-direction: column;
   }
 }

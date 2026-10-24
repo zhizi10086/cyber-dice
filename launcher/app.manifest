@@ -3,7 +3,7 @@
   <assemblyIdentity
     type="win32"
     name="zhizi10086.CyberDice"
-    version="3.1.0.0"
+    version="3.1.1.0"
     processorArchitecture="amd64"
   />
   <description>虚空天机计算盘离线版</description>
