@@ -7,12 +7,61 @@
   const REVEAL_START_MS = 300;
   const REVEAL_STEP_MS = 120;
   const VERDICT_DELAY_MS = 500;
+  const D20_ANIMATION_MS = 1100;
   const TOAST_DURATION_MS = 2400;
   const WARNING_FLASH_DURATION_MS = 1200;
   const SHARE_BASE_URL = "https://zhizi10086.github.io/cyber-dice/";
   const DEFAULT_CARD_NAME = "无名道友";
 
   const CONFIG = {
+    // 一掷问天严格使用内部规则表的五档文本。
+    d20Rules: [
+      {
+        min: 1,
+        max: 1,
+        grade: "大失败",
+        title: "深渊凝视",
+        verdict: "万劫不复",
+        whisper: "煞星冲顶，因果断绝。封盘停手，退避三舍。",
+        tone: "bad",
+      },
+      {
+        min: 2,
+        max: 5,
+        grade: "凶",
+        title: "逆水行舟",
+        verdict: "煞气初显",
+        whisper: "阴云蔽日，气机阻滞。勿生贪念，及时止损。",
+        tone: "bad",
+      },
+      {
+        min: 6,
+        max: 15,
+        grade: "中平",
+        title: "混沌未明",
+        verdict: "命途难定",
+        whisper: "太虚混沌，吉凶交泰。浅尝辄止，静观其变。",
+        tone: "neutral",
+      },
+      {
+        min: 16,
+        max: 19,
+        grade: "吉",
+        title: "紫气东来",
+        verdict: "气运正盛",
+        whisper: "星光初显，势如破竹。见好就收，不可恋战。",
+        tone: "good",
+      },
+      {
+        min: 20,
+        max: 20,
+        grade: "大成功",
+        title: "虚空垂青",
+        verdict: "天命所归",
+        whisper: "紫微星动，万象归一。今日所求，皆可如愿。",
+        tone: "good",
+      },
+    ],
     scenes: {
       wander: {
         id: "wander",
@@ -69,7 +118,8 @@
       },
     ],
     storage: {
-      historyKey: "cyberDice.history.v2",
+      historyKey: "cyberDice.history.v3",
+      previousHistoryKey: "cyberDice.history.v2",
       legacyHistoryKey: "cyberDice.history.v1",
       rollTimesKey: "cyberDice.rollTimes.v1",
       cardNameKey: "cyberDice.cardName.v1",
@@ -145,18 +195,29 @@
   const DICE = CONFIG.dice;
 
   const elements = {
+    systemTabs: [...document.querySelectorAll(".system-tab")],
+    hexControls: document.querySelector("#hex-controls"),
+    d20Controls: document.querySelector("#d20-controls"),
     sceneTabs: [...document.querySelectorAll(".scene-tab")],
     tabs: [...document.querySelectorAll(".mode-tab")],
     autoPanel: document.querySelector("#auto-panel"),
     manualPanel: document.querySelector("#manual-panel"),
     rollAuto: document.querySelector("#roll-auto"),
     rollAutoLabel: document.querySelector("#roll-auto-label"),
+    rollD20: document.querySelector("#roll-d20"),
+    rollD20Label: document.querySelector("#roll-d20-label"),
     manualForm: document.querySelector("#manual-form"),
     manualFields: document.querySelector("#manual-fields"),
     formError: document.querySelector("#form-error"),
     manualSubmit: document.querySelector('#manual-form button[type="submit"]'),
     resetManual: document.querySelector("#reset-manual"),
     oracleIdle: document.querySelector("#oracle-idle"),
+    oracleIdleTitle: document.querySelector("#oracle-idle-title"),
+    oracleIdleCopy: document.querySelector("#oracle-idle-copy"),
+    d20Stage: document.querySelector("#d20-stage"),
+    d20Canvas: document.querySelector("#d20-canvas"),
+    d20FaceValue: document.querySelector("#d20-face-value"),
+    d20StageCaption: document.querySelector("#d20-stage-caption"),
     results: document.querySelector("#results"),
     diceGrid: document.querySelector("#dice-grid"),
     achievementBanner: document.querySelector("#achievement-banner"),
@@ -168,6 +229,16 @@
     copyReport: document.querySelector("#copy-report"),
     copyShareLink: document.querySelector("#copy-share-link"),
     generateCard: document.querySelector("#generate-card"),
+    d20ResultCard: document.querySelector("#d20-result-card"),
+    d20ResultGrade: document.querySelector("#d20-result-grade"),
+    d20ResultNumber: document.querySelector("#d20-result-number"),
+    d20ResultTitle: document.querySelector("#d20-result-title"),
+    d20ResultVerdict: document.querySelector("#d20-result-verdict"),
+    d20ResultWhisper: document.querySelector("#d20-result-whisper"),
+    d20CopyReport: document.querySelector("#d20-copy-report"),
+    d20CopyShareLink: document.querySelector("#d20-copy-share-link"),
+    d20GenerateCard: document.querySelector("#d20-generate-card"),
+    d20AddictionWarning: document.querySelector("#d20-addiction-warning"),
     extremeWarning: document.querySelector("#extreme-warning"),
     addictionWarning: document.querySelector("#addiction-warning"),
     warningFlash: document.querySelector("#warning-flash"),
@@ -207,6 +278,16 @@
     cardQrCode: document.querySelector("#card-qr-code"),
     cardShareUrl: document.querySelector("#card-share-url"),
     oracleCard: document.querySelector("#oracle-card"),
+    d20CardSealName: document.querySelector("#d20-card-seal-name"),
+    d20CardHero: document.querySelector("#d20-card-hero"),
+    d20CardRoll: document.querySelector("#d20-card-roll"),
+    d20CardGrade: document.querySelector("#d20-card-grade"),
+    d20CardTitle: document.querySelector("#d20-card-title"),
+    d20CardVerdict: document.querySelector("#d20-card-verdict"),
+    d20CardWhisper: document.querySelector("#d20-card-whisper"),
+    d20CardQrCode: document.querySelector("#d20-card-qr-code"),
+    d20CardShareUrl: document.querySelector("#d20-card-share-url"),
+    d20OracleCard: document.querySelector("#d20-oracle-card"),
     readoutState: document.querySelector("#readout-state"),
     announcer: document.querySelector("#announcer"),
     dieTemplate: document.querySelector("#die-card-template"),
@@ -214,16 +295,20 @@
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const manualInputs = new Map();
+  let activeSystem = "hex";
   let activeMode = "auto";
   let activeScene = "wander";
   let activeHistoryFilter = "all";
   let isRolling = false;
   let isSharedView = false;
+  let sharedSystem = "hex";
   let sharedExitNotice = "";
   let revealTimeouts = [];
   let revealIntervals = [];
   let toastTimeout = null;
   let warningFlashTimeout = null;
+  let d20AnimationFrame = null;
+  let d20AnimationResolve = null;
   let activeResult = null;
   let formaTapCount = 0;
   let formaToastShown = false;
@@ -321,6 +406,7 @@
     }
 
     return {
+      system: "hex",
       results,
       byId,
       overall,
@@ -331,6 +417,34 @@
       achievement,
       whisper,
       shouldRecord: true,
+    };
+  }
+
+  function getD20Rule(roll) {
+    return CONFIG.d20Rules.find(
+      (rule) => roll >= rule.min && roll <= rule.max,
+    ) || null;
+  }
+
+  function createD20Result(roll, shouldRecord = true) {
+    const rule = getD20Rule(roll);
+    if (!rule) {
+      return null;
+    }
+
+    return {
+      system: "d20",
+      mode: "d20",
+      roll,
+      grade: rule.grade,
+      title: rule.title,
+      verdict: {
+        tone: rule.tone,
+        text: rule.verdict,
+      },
+      whisper: rule.whisper,
+      tone: rule.tone,
+      shouldRecord,
     };
   }
 
@@ -356,6 +470,16 @@
   }
 
   function formatBattleReport(result) {
+    if (result.system === "d20") {
+      return [
+        "📜【一掷问天 · D20 天机签】",
+        `【D20 点数】${result.roll}`,
+        `【等级】${result.grade} · ${result.title}`,
+        `【判词】${result.verdict.text}`,
+        `【天机低语】${result.whisper}`,
+      ].join("\n");
+    }
+
     const lines = [];
     if (result.achievement) {
       lines.push(`🏆【成就解锁：${result.achievement.name}】`);
@@ -384,6 +508,13 @@
 
   function buildShareUrl(result) {
     const url = new URL(SHARE_BASE_URL);
+
+    if (result.system === "d20") {
+      url.searchParams.set("mode", "d20");
+      url.searchParams.set("d20", String(result.roll));
+      return url.href;
+    }
+
     url.searchParams.set("mode", result.scene.shareKey);
 
     DICE.forEach((die) => {
@@ -404,6 +535,28 @@
     }
 
     const mode = modeValues[0];
+    if (mode === "d20") {
+      const allowedNames = new Set(["mode", "d20"]);
+      if ([...params.keys()].some((name) => !allowedNames.has(name))) {
+        return null;
+      }
+
+      const rollValues = params.getAll("d20");
+      if (rollValues.length !== 1 || !/^\d+$/.test(rollValues[0])) {
+        return null;
+      }
+
+      const roll = Number(rollValues[0]);
+      if (!Number.isInteger(roll) || roll < 1 || roll > 20) {
+        return null;
+      }
+
+      return {
+        system: "d20",
+        roll,
+      };
+    }
+
     const scene = Object.values(CONFIG.scenes)
       .find((candidate) => candidate.shareKey === mode);
 
@@ -432,6 +585,7 @@
     }
 
     return {
+      system: "hex",
       sceneId: scene.id,
       rolls,
     };
@@ -455,7 +609,7 @@
     return `record-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
-  function normalizeHistoryEntry(entry, index) {
+  function normalizeHexHistoryEntry(entry, index) {
     const validModes = new Set(["auto", "manual"]);
     const validScenes = new Set(Object.keys(CONFIG.scenes));
     if (
@@ -484,7 +638,8 @@
       : [];
 
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
+      system: "hex",
       id: typeof entry.id === "string" && entry.id
         ? entry.id
         : `legacy-${entry.timestamp}-${index}`,
@@ -506,31 +661,78 @@
     };
   }
 
-  function migrateLegacyHistory() {
+  function normalizeD20HistoryEntry(entry, index) {
+    if (
+      !entry ||
+      !Number.isFinite(entry.timestamp) ||
+      !Number.isInteger(entry.roll) ||
+      entry.roll < 1 ||
+      entry.roll > 20
+    ) {
+      return null;
+    }
+
+    const rule = getD20Rule(entry.roll);
+    if (!rule) {
+      return null;
+    }
+
+    return {
+      schemaVersion: 3,
+      system: "d20",
+      id: typeof entry.id === "string" && entry.id
+        ? entry.id
+        : `legacy-d20-${entry.timestamp}-${index}`,
+      timestamp: entry.timestamp,
+      mode: "d20",
+      roll: entry.roll,
+      grade: rule.grade,
+      title: rule.title,
+      verdict: rule.verdict,
+      whisper: rule.whisper,
+      tone: rule.tone,
+      legacy: false,
+    };
+  }
+
+  function normalizeHistoryEntry(entry, index) {
+    const isD20 = entry?.system === "d20" || entry?.mode === "d20";
+    return isD20
+      ? normalizeD20HistoryEntry(entry, index)
+      : normalizeHexHistoryEntry(entry, index);
+  }
+
+  function migrateHistoryArray(source) {
+    return source
+      .map(normalizeHistoryEntry)
+      .filter(Boolean)
+      .slice(0, CONFIG.storage.historyLimit);
+  }
+
+  function getHistoryEntries() {
+    const value = storage.read(CONFIG.storage.historyKey, null);
+    if (Array.isArray(value)) {
+      return migrateHistoryArray(value);
+    }
+
+    const previous = storage.read(CONFIG.storage.previousHistoryKey, null);
+    if (Array.isArray(previous)) {
+      const migrated = migrateHistoryArray(previous);
+      storage.write(CONFIG.storage.historyKey, migrated);
+      storage.remove(CONFIG.storage.previousHistoryKey);
+      storage.remove(CONFIG.storage.legacyHistoryKey);
+      return migrated;
+    }
+
     const legacy = storage.read(CONFIG.storage.legacyHistoryKey, []);
     if (!Array.isArray(legacy) || legacy.length === 0) {
       return [];
     }
 
-    const migrated = legacy
-      .map(normalizeHistoryEntry)
-      .filter(Boolean)
-      .slice(0, CONFIG.storage.historyLimit);
+    const migrated = migrateHistoryArray(legacy);
     storage.write(CONFIG.storage.historyKey, migrated);
     storage.remove(CONFIG.storage.legacyHistoryKey);
     return migrated;
-  }
-
-  function getHistoryEntries() {
-    const value = storage.read(CONFIG.storage.historyKey, null);
-    if (!Array.isArray(value)) {
-      return migrateLegacyHistory();
-    }
-
-    return value
-      .map(normalizeHistoryEntry)
-      .filter(Boolean)
-      .slice(0, CONFIG.storage.historyLimit);
   }
 
   function getRollTimes(now = Date.now()) {
@@ -566,6 +768,18 @@
   }
 
   function createHistoryShareText(entry) {
+    if (entry.system === "d20") {
+      return [
+        "📜【虚空天机历史 · 一掷问天】",
+        `时间：${formatFullDateTime(entry.timestamp)}`,
+        "模式：问",
+        `【D20 点数】${entry.roll}`,
+        `【等级】${entry.grade} · ${entry.title}`,
+        `【判词】${entry.verdict}`,
+        `【天机低语】${entry.whisper}`,
+      ].join("\n");
+    }
+
     const scene = CONFIG.scenes[entry.scene];
     const lines = [
       "📜【虚空天机历史】",
@@ -601,6 +815,13 @@
   }
 
   function buildHistoryShareUrl(entry) {
+    if (entry.system === "d20") {
+      return buildShareUrl({
+        system: "d20",
+        roll: entry.roll,
+      });
+    }
+
     if (!entry.dice) {
       return "";
     }
@@ -609,9 +830,14 @@
       entry.dice.map((die) => [die.id, { roll: die.roll }]),
     );
     return buildShareUrl({
+      system: "hex",
       scene: CONFIG.scenes[entry.scene],
       byId,
     });
+  }
+
+  function canShareHistoryEntry(entry) {
+    return entry.system === "d20" || Boolean(entry.dice);
   }
 
   function createHistoryDiceDetails(entry) {
@@ -637,6 +863,27 @@
       container.append(row);
     });
 
+    return container;
+  }
+
+  function createHistoryD20Details(entry) {
+    const container = document.createElement("div");
+    container.className = "history-d20";
+    container.dataset.tone = entry.tone;
+
+    const roll = document.createElement("strong");
+    roll.className = "history-d20__roll";
+    roll.textContent = `D20 · ${entry.roll} 点`;
+
+    const grade = document.createElement("span");
+    grade.className = "history-d20__grade";
+    grade.textContent = `${entry.grade} · ${entry.title}`;
+
+    const verdict = document.createElement("span");
+    verdict.className = "history-d20__verdict";
+    verdict.textContent = `判词：${entry.verdict}`;
+
+    container.append(roll, grade, verdict);
     return container;
   }
 
@@ -694,7 +941,9 @@
     elements.historyList.replaceChildren();
 
     filtered.forEach((entry) => {
-      const scene = CONFIG.scenes[entry.scene];
+      const scene = entry.system === "hex"
+        ? CONFIG.scenes[entry.scene]
+        : null;
       const item = document.createElement("li");
       item.className = "history-item";
       const details = document.createElement("details");
@@ -710,15 +959,21 @@
 
       const mode = document.createElement("span");
       mode.className = "history-entry__mode";
-      mode.textContent = entry.mode === "manual" ? "[手]" : "[自]";
+      mode.textContent = entry.system === "d20"
+        ? "[问]"
+        : entry.mode === "manual" ? "[手]" : "[自]";
 
       const sceneLabel = document.createElement("span");
       sceneLabel.className = "history-entry__scene";
-      sceneLabel.textContent = scene.label;
+      sceneLabel.textContent = entry.system === "d20"
+        ? "一掷问天 · D20"
+        : scene.label;
 
       const score = document.createElement("strong");
       score.className = "history-entry__score";
-      score.textContent = formatSigned(entry.overall);
+      score.textContent = entry.system === "d20"
+        ? `${entry.roll} 点`
+        : formatSigned(entry.overall);
 
       const tone = document.createElement("span");
       tone.className = "history-entry__tone";
@@ -733,7 +988,9 @@
 
       const detail = document.createElement("div");
       detail.className = "history-entry__details";
-      if (entry.dice) {
+      if (entry.system === "d20") {
+        detail.append(createHistoryD20Details(entry));
+      } else if (entry.dice) {
         detail.append(createHistoryDiceDetails(entry));
       } else {
         const legacyNote = document.createElement("p");
@@ -765,8 +1022,8 @@
       linkButton.className = "history-action";
       linkButton.type = "button";
       linkButton.textContent = "复制本卦链接";
-      linkButton.disabled = !entry.dice;
-      if (!entry.dice) {
+      linkButton.disabled = !canShareHistoryEntry(entry);
+      if (!canShareHistoryEntry(entry)) {
         linkButton.title = "旧记录没有点数明细";
       }
       linkButton.addEventListener("click", () => copyHistoryLink(entry));
@@ -781,25 +1038,40 @@
 
   function recordResult(result) {
     const now = Date.now();
-    const entry = {
-      schemaVersion: 2,
-      id: createRecordId(),
-      timestamp: now,
-      mode: result.mode,
-      scene: result.scene.id,
-      overall: result.overall,
-      tone: result.verdict.tone,
-      verdict: result.verdict.text,
-      achievement: result.achievement?.name || "",
-      whisper: result.whisper,
-      dice: result.results.map((saved) => ({
-        id: saved.die.id,
-        roll: saved.roll,
-        contribution: saved.contribution,
-        state: saved.state,
-        flavor: saved.flavor,
-      })),
-    };
+    const entry = result.system === "d20"
+      ? {
+        schemaVersion: 3,
+        system: "d20",
+        id: createRecordId(),
+        timestamp: now,
+        mode: "d20",
+        roll: result.roll,
+        grade: result.grade,
+        title: result.title,
+        verdict: result.verdict.text,
+        whisper: result.whisper,
+        tone: result.tone,
+      }
+      : {
+        schemaVersion: 3,
+        system: "hex",
+        id: createRecordId(),
+        timestamp: now,
+        mode: result.mode,
+        scene: result.scene.id,
+        overall: result.overall,
+        tone: result.verdict.tone,
+        verdict: result.verdict.text,
+        achievement: result.achievement?.name || "",
+        whisper: result.whisper,
+        dice: result.results.map((saved) => ({
+          id: saved.die.id,
+          roll: saved.roll,
+          contribution: saved.contribution,
+          state: saved.state,
+          flavor: saved.flavor,
+        })),
+      };
     const history = [entry, ...getHistoryEntries()]
       .slice(0, CONFIG.storage.historyLimit);
     storage.write(CONFIG.storage.historyKey, history);
@@ -821,11 +1093,16 @@
   }
 
   function showFormaSacrifice(result) {
-    elements.formaSacrifice.hidden = result.overall >= -40;
+    elements.formaSacrifice.hidden =
+      result.system !== "hex" || result.overall >= -40;
   }
 
   function handleFormaTap() {
-    if (!activeResult || activeResult.overall >= -40) {
+    if (
+      !activeResult ||
+      activeResult.system !== "hex" ||
+      activeResult.overall >= -40
+    ) {
       return;
     }
 
@@ -962,6 +1239,24 @@
 
   function renderExportCard(result, cardName) {
     const shareUrl = buildShareUrl(result);
+
+    if (result.system === "d20") {
+      elements.oracleCard.hidden = true;
+      elements.d20OracleCard.hidden = false;
+      elements.d20CardSealName.textContent = cardName;
+      elements.d20CardHero.dataset.tone = result.tone;
+      elements.d20CardRoll.textContent = String(result.roll);
+      elements.d20CardGrade.textContent = result.grade;
+      elements.d20CardTitle.textContent = result.title;
+      elements.d20CardVerdict.textContent = result.verdict.text;
+      elements.d20CardWhisper.textContent = result.whisper;
+      elements.d20CardShareUrl.textContent = shareUrl;
+      setCardQrCode(elements.d20CardQrCode, shareUrl);
+      return shareUrl;
+    }
+
+    elements.d20OracleCard.hidden = true;
+    elements.oracleCard.hidden = false;
     elements.cardSealName.textContent = cardName;
     elements.cardScene.textContent = result.scene.label;
     elements.cardAchievement.hidden = !result.achievement;
@@ -991,11 +1286,15 @@
       elements.cardDiceList.append(item);
     });
 
+    setCardQrCode(elements.cardQrCode, shareUrl);
+    return shareUrl;
+  }
+
+  function setCardQrCode(image, shareUrl) {
     const qr = qrcode(0, "M");
     qr.addData(shareUrl, "Byte");
     qr.make();
-    elements.cardQrCode.src = qr.createDataURL(6, 24);
-    return shareUrl;
+    image.src = qr.createDataURL(6, 24);
   }
 
   async function waitForImage(image) {
@@ -1060,7 +1359,10 @@
     }
 
     isGeneratingCard = true;
-    elements.generateCard.disabled = true;
+    const activeCardButton = activeResult.system === "d20"
+      ? elements.d20GenerateCard
+      : elements.generateCard;
+    activeCardButton.disabled = true;
 
     try {
       if (typeof window.html2canvas !== "function" || typeof window.qrcode !== "function") {
@@ -1068,10 +1370,16 @@
       }
 
       renderExportCard(activeResult, cardName);
-      await waitForImage(elements.cardQrCode);
+      const cardElement = activeResult.system === "d20"
+        ? elements.d20OracleCard
+        : elements.oracleCard;
+      const qrImage = activeResult.system === "d20"
+        ? elements.d20CardQrCode
+        : elements.cardQrCode;
+      await waitForImage(qrImage);
       await new Promise((resolve) => window.requestAnimationFrame(resolve));
 
-      const canvas = await window.html2canvas(elements.oracleCard, {
+      const canvas = await window.html2canvas(cardElement, {
         backgroundColor: "#020908",
         logging: false,
         scale: 1,
@@ -1089,7 +1397,7 @@
       showToast("天机卡牌生成失败，请稍后重试。", "error");
     } finally {
       isGeneratingCard = false;
-      elements.generateCard.disabled = false;
+      activeCardButton.disabled = false;
     }
   }
 
@@ -1150,6 +1458,448 @@
     }
 
     return Math.floor(Math.random() * max) + 1;
+  }
+
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const ICO_VERTICES = [
+    [-1, PHI, 0],
+    [1, PHI, 0],
+    [-1, -PHI, 0],
+    [1, -PHI, 0],
+    [0, -1, PHI],
+    [0, 1, PHI],
+    [0, -1, -PHI],
+    [0, 1, -PHI],
+    [PHI, 0, -1],
+    [PHI, 0, 1],
+    [-PHI, 0, -1],
+    [-PHI, 0, 1],
+  ].map(normalizeVector);
+  const ICO_FACE_INDICES = [
+    [0, 11, 5],
+    [0, 5, 1],
+    [0, 1, 7],
+    [0, 7, 10],
+    [0, 10, 11],
+    [1, 5, 9],
+    [5, 11, 4],
+    [11, 10, 2],
+    [10, 7, 6],
+    [7, 1, 8],
+    [3, 9, 4],
+    [3, 4, 2],
+    [3, 2, 6],
+    [3, 6, 8],
+    [3, 8, 9],
+    [4, 9, 5],
+    [2, 4, 11],
+    [6, 2, 10],
+    [8, 6, 7],
+    [9, 8, 1],
+  ];
+  const ICO_FACES = ICO_FACE_INDICES.map((indices) => {
+    const [a, b, c] = indices.map((index) => ICO_VERTICES[index]);
+    const center = normalizeVector(addVectors(addVectors(a, b), c));
+    let normal = normalizeVector(crossProduct(
+      subtractVectors(b, a),
+      subtractVectors(c, a),
+    ));
+    if (dotProduct(normal, center) < 0) {
+      normal = normal.map((value) => -value);
+    }
+    return { indices, normal };
+  });
+
+  function normalizeVector(vector) {
+    const length = Math.hypot(...vector) || 1;
+    return vector.map((value) => value / length);
+  }
+
+  function addVectors(left, right) {
+    return left.map((value, index) => value + right[index]);
+  }
+
+  function subtractVectors(left, right) {
+    return left.map((value, index) => value - right[index]);
+  }
+
+  function dotProduct(left, right) {
+    return left.reduce(
+      (sum, value, index) => sum + value * right[index],
+      0,
+    );
+  }
+
+  function crossProduct(left, right) {
+    return [
+      left[1] * right[2] - left[2] * right[1],
+      left[2] * right[0] - left[0] * right[2],
+      left[0] * right[1] - left[1] * right[0],
+    ];
+  }
+
+  function multiplyQuaternions(left, right) {
+    const [lx, ly, lz, lw] = left;
+    const [rx, ry, rz, rw] = right;
+    return normalizeQuaternion([
+      lw * rx + lx * rw + ly * rz - lz * ry,
+      lw * ry - lx * rz + ly * rw + lz * rx,
+      lw * rz + lx * ry - ly * rx + lz * rw,
+      lw * rw - lx * rx - ly * ry - lz * rz,
+    ]);
+  }
+
+  function normalizeQuaternion(quaternion) {
+    const length = Math.hypot(...quaternion) || 1;
+    return quaternion.map((value) => value / length);
+  }
+
+  function quaternionFromAxisAngle(axis, angle) {
+    const normalizedAxis = normalizeVector(axis);
+    const halfAngle = angle / 2;
+    const scale = Math.sin(halfAngle);
+    return [
+      normalizedAxis[0] * scale,
+      normalizedAxis[1] * scale,
+      normalizedAxis[2] * scale,
+      Math.cos(halfAngle),
+    ];
+  }
+
+  function quaternionFromEuler(x, y, z) {
+    const qx = quaternionFromAxisAngle([1, 0, 0], x);
+    const qy = quaternionFromAxisAngle([0, 1, 0], y);
+    const qz = quaternionFromAxisAngle([0, 0, 1], z);
+    return multiplyQuaternions(qz, multiplyQuaternions(qy, qx));
+  }
+
+  function rotateVector(vector, quaternion) {
+    const [qx, qy, qz, qw] = quaternion;
+    const qVector = [qx, qy, qz];
+    const intermediate = addVectors(
+      crossProduct(qVector, vector),
+      vector.map((value) => value * qw),
+    );
+    const rotated = addVectors(
+      vector,
+      crossProduct(qVector, intermediate).map((value) => value * 2),
+    );
+    return rotated;
+  }
+
+  function quaternionFromUnitVectors(from, to) {
+    const normalizedFrom = normalizeVector(from);
+    const normalizedTo = normalizeVector(to);
+    const dot = dotProduct(normalizedFrom, normalizedTo);
+
+    if (dot < -0.999999) {
+      let axis = crossProduct(normalizedFrom, [1, 0, 0]);
+      if (Math.hypot(...axis) < 0.001) {
+        axis = crossProduct(normalizedFrom, [0, 1, 0]);
+      }
+      return quaternionFromAxisAngle(axis, Math.PI);
+    }
+
+    const cross = crossProduct(normalizedFrom, normalizedTo);
+    return normalizeQuaternion([...cross, 1 + dot]);
+  }
+
+  function slerpQuaternions(start, end, progress) {
+    let target = end;
+    let dot = start.reduce(
+      (sum, value, index) => sum + value * target[index],
+      0,
+    );
+    if (dot < 0) {
+      target = target.map((value) => -value);
+      dot = -dot;
+    }
+
+    if (dot > 0.9995) {
+      return normalizeQuaternion(
+        start.map((value, index) => value + (target[index] - value) * progress),
+      );
+    }
+
+    const theta = Math.acos(Math.min(1, Math.max(-1, dot)));
+    const sinTheta = Math.sin(theta);
+    const startWeight = Math.sin((1 - progress) * theta) / sinTheta;
+    const endWeight = Math.sin(progress * theta) / sinTheta;
+    return normalizeQuaternion(
+      start.map(
+        (value, index) => value * startWeight + target[index] * endWeight,
+      ),
+    );
+  }
+
+  function easeOutCubic(value) {
+    return 1 - Math.pow(1 - value, 3);
+  }
+
+  function easeOutQuint(value) {
+    return 1 - Math.pow(1 - value, 5);
+  }
+
+  function getD20FaceQuaternion(roll) {
+    const face = ICO_FACES[(roll - 1) % ICO_FACES.length];
+    const align = quaternionFromUnitVectors(face.normal, [0, 0, 1]);
+    const inPlaneRotation = quaternionFromAxisAngle(
+      [0, 0, 1],
+      ((roll * 137.508) * Math.PI) / 180,
+    );
+    return multiplyQuaternions(inPlaneRotation, align);
+  }
+
+  function prepareD20Canvas() {
+    const canvas = elements.d20Canvas;
+    const bounds = canvas.getBoundingClientRect();
+    const width = Math.max(260, Math.round(bounds.width || 360));
+    const height = Math.max(260, Math.round(bounds.height || width));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const pixelWidth = Math.round(width * dpr);
+    const pixelHeight = Math.round(height * dpr);
+
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Canvas 2D is unavailable.");
+    }
+
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.clearRect(0, 0, width, height);
+    return { context, width, height };
+  }
+
+  function drawIcosahedron(quaternion, selectedFaceIndex, finalTone, showWinner) {
+    const { context, width, height } = prepareD20Canvas();
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const scale = Math.min(width, height) * 0.31;
+    const cameraDistance = 4.8;
+    const light = normalizeVector([-0.38, 0.58, 0.74]);
+    const rotatedVertices = ICO_VERTICES.map(
+      (vertex) => rotateVector(vertex, quaternion),
+    );
+    const projected = rotatedVertices.map((vertex) => {
+      const perspective = cameraDistance / (cameraDistance - vertex[2]);
+      return [
+        centerX + vertex[0] * scale * perspective,
+        centerY - vertex[1] * scale * perspective,
+        vertex[2],
+      ];
+    });
+    const toneColor = finalTone === "good"
+      ? "113, 255, 198"
+      : finalTone === "bad"
+        ? "255, 111, 132"
+        : "244, 201, 107";
+    const faces = ICO_FACES.map((face, index) => {
+      const rotatedNormal = rotateVector(face.normal, quaternion);
+      const depth = face.indices.reduce(
+        (sum, vertexIndex) => sum + rotatedVertices[vertexIndex][2],
+        0,
+      ) / 3;
+      const brightness = Math.max(0, dotProduct(rotatedNormal, light));
+      return {
+        index,
+        points: face.indices.map((vertexIndex) => projected[vertexIndex]),
+        depth,
+        brightness,
+      };
+    }).sort((left, right) => left.depth - right.depth);
+
+    const glow = context.createRadialGradient(
+      centerX,
+      centerY,
+      scale * 0.15,
+      centerX,
+      centerY,
+      scale * 1.32,
+    );
+    glow.addColorStop(0, "rgba(103, 255, 210, 0.12)");
+    glow.addColorStop(1, "rgba(2, 9, 8, 0)");
+    context.fillStyle = glow;
+    context.fillRect(0, 0, width, height);
+
+    faces.forEach((face) => {
+      const isWinner = showWinner && face.index === selectedFaceIndex;
+      const lightStrength = 0.16 + face.brightness * 0.46;
+      context.beginPath();
+      face.points.forEach(([x, y], index) => {
+        if (index === 0) {
+          context.moveTo(x, y);
+        } else {
+          context.lineTo(x, y);
+        }
+      });
+      context.closePath();
+      context.fillStyle = isWinner
+        ? `rgba(${toneColor}, 0.46)`
+        : `rgba(70, 224, 181, ${lightStrength.toFixed(3)})`;
+      context.strokeStyle = isWinner
+        ? `rgba(${toneColor}, 0.98)`
+        : "rgba(169, 255, 232, 0.34)";
+      context.lineWidth = isWinner ? 2.4 : 1;
+      context.fill();
+      context.stroke();
+    });
+
+    context.beginPath();
+    context.arc(centerX, centerY, scale * 1.48, 0, Math.PI * 2);
+    context.strokeStyle = "rgba(103, 255, 210, 0.18)";
+    context.lineWidth = 1;
+    context.setLineDash([4, 8]);
+    context.stroke();
+    context.setLineDash([]);
+  }
+
+  function drawD20Idle() {
+    cancelD20Animation();
+    elements.d20Stage.dataset.tone = "neutral";
+    elements.d20FaceValue.textContent = "?";
+    elements.d20FaceValue.removeAttribute("data-tone");
+    elements.d20FaceValue.classList.remove("is-spinning", "is-visible");
+    elements.d20StageCaption.textContent = "D20 天机骰静候问询";
+    elements.d20Canvas.setAttribute(
+      "aria-label",
+      "等待投掷的正二十面体",
+    );
+
+    try {
+      drawIcosahedron(
+        quaternionFromEuler(0.32, -0.46, 0.15),
+        -1,
+        "neutral",
+        false,
+      );
+    } catch {
+      elements.d20FaceValue.classList.add("is-visible");
+    }
+  }
+
+  function drawD20Final(result) {
+    const selectedFaceIndex = (result.roll - 1) % ICO_FACES.length;
+    elements.d20Stage.dataset.tone = result.tone;
+    elements.d20FaceValue.dataset.tone = result.tone;
+    elements.d20FaceValue.textContent = String(result.roll);
+    elements.d20FaceValue.classList.remove("is-spinning");
+    elements.d20FaceValue.classList.add("is-visible");
+    elements.d20StageCaption.textContent = `${result.grade} · ${result.title}`;
+    elements.d20Canvas.setAttribute(
+      "aria-label",
+      `D20 点数 ${result.roll}，${result.grade}，${result.title}`,
+    );
+
+    try {
+      drawIcosahedron(
+        getD20FaceQuaternion(result.roll),
+        selectedFaceIndex,
+        result.tone,
+        true,
+      );
+    } catch {
+      // 画布不可用时，DOM 中的点数与完整结果仍然保留。
+    }
+  }
+
+  function cancelD20Animation() {
+    if (d20AnimationFrame !== null) {
+      window.cancelAnimationFrame(d20AnimationFrame);
+      d20AnimationFrame = null;
+    }
+    if (d20AnimationResolve) {
+      const resolve = d20AnimationResolve;
+      d20AnimationResolve = null;
+      resolve(false);
+    }
+  }
+
+  function animateD20(result) {
+    cancelD20Animation();
+    elements.d20Stage.hidden = false;
+    elements.d20Stage.dataset.tone = "neutral";
+    elements.d20FaceValue.textContent = "…";
+    elements.d20FaceValue.removeAttribute("data-tone");
+    elements.d20FaceValue.classList.remove("is-visible");
+    elements.d20FaceValue.classList.add("is-spinning");
+    elements.d20StageCaption.textContent = "虚空正在转动天机";
+    elements.d20Canvas.setAttribute("aria-label", "正二十面体正在旋转");
+
+    if (reducedMotion.matches) {
+      drawD20Final(result);
+      return Promise.resolve(true);
+    }
+
+    const alignmentStart = 0.62;
+    const startEuler = [-0.3, 0.42, -0.12];
+    const alignEuler = [
+      startEuler[0] + Math.PI * 5.2,
+      startEuler[1] + Math.PI * 7.1,
+      startEuler[2] + Math.PI * 3.4,
+    ];
+    const alignRotation = quaternionFromEuler(...alignEuler);
+    const endRotation = getD20FaceQuaternion(result.roll);
+    const startTime = performance.now();
+    let lastTickerUpdate = 0;
+
+    return new Promise((resolve) => {
+      d20AnimationResolve = resolve;
+      const finish = () => {
+        d20AnimationFrame = null;
+        if (d20AnimationResolve) {
+          const currentResolve = d20AnimationResolve;
+          d20AnimationResolve = null;
+          currentResolve(true);
+        }
+      };
+      const frame = (now) => {
+        const progress = Math.min(1, (now - startTime) / D20_ANIMATION_MS);
+        try {
+          let rotation;
+          if (progress < alignmentStart) {
+            const spinProgress = easeOutCubic(progress / alignmentStart);
+            rotation = quaternionFromEuler(
+              startEuler[0] + Math.PI * 5.2 * spinProgress,
+              startEuler[1] + Math.PI * 7.1 * spinProgress,
+              startEuler[2] + Math.PI * 3.4 * spinProgress,
+            );
+          } else {
+            const alignmentProgress = easeOutQuint(
+              (progress - alignmentStart) / (1 - alignmentStart),
+            );
+            rotation = slerpQuaternions(
+              alignRotation,
+              endRotation,
+              alignmentProgress,
+            );
+          }
+
+          drawIcosahedron(rotation, -1, "neutral", false);
+          if (now - lastTickerUpdate > 70) {
+            elements.d20FaceValue.textContent = String(randomInteger(20));
+            lastTickerUpdate = now;
+          }
+        } catch {
+          drawD20Final(result);
+          finish();
+          return;
+        }
+
+        if (progress < 1) {
+          d20AnimationFrame = window.requestAnimationFrame(frame);
+          return;
+        }
+
+        drawD20Final(result);
+        finish();
+      };
+
+      d20AnimationFrame = window.requestAnimationFrame(frame);
+    });
   }
 
   function createManualFields() {
@@ -1333,6 +2083,13 @@
 
   function prepareResults(cards) {
     clearTransientFeedback();
+    cancelD20Animation();
+    elements.d20Stage.hidden = true;
+    elements.d20ResultCard.hidden = true;
+    elements.d20CopyReport.disabled = true;
+    elements.d20CopyShareLink.disabled = true;
+    elements.d20GenerateCard.disabled = true;
+    elements.d20AddictionWarning.hidden = true;
     elements.diceGrid.replaceChildren(...cards);
     elements.oracleIdle.hidden = true;
     elements.results.hidden = false;
@@ -1416,7 +2173,83 @@
       `${result.whisper ? ` ${result.whisper}` : ""}`;
   }
 
+  function prepareD20Pending() {
+    clearTransientFeedback();
+    clearRevealTimers();
+    cancelD20Animation();
+    elements.d20Stage.hidden = false;
+    elements.oracleIdle.hidden = true;
+    elements.results.hidden = false;
+    elements.results.setAttribute("aria-busy", "true");
+    elements.diceGrid.replaceChildren();
+    elements.achievementBanner.hidden = true;
+    elements.achievementBanner.classList.remove("is-revealing");
+    elements.overallCard.hidden = true;
+    elements.d20ResultCard.hidden = true;
+    elements.d20ResultCard.classList.remove("is-revealing");
+    elements.d20CopyReport.disabled = true;
+    elements.d20CopyShareLink.disabled = true;
+    elements.d20GenerateCard.disabled = true;
+    elements.d20AddictionWarning.hidden = true;
+    elements.readoutState.textContent = "CASTING";
+    elements.readoutState.classList.add("is-active");
+    resetFormaInteraction();
+  }
+
+  function renderD20Result(result, animateReveal) {
+    activeResult = result;
+    const addictionTriggered = result.shouldRecord
+      ? recordResult(result)
+      : false;
+    elements.d20ResultCard.dataset.tone = result.tone;
+    if (result.roll === 1) {
+      elements.d20ResultCard.dataset.severity = "critical-fail";
+    } else if (result.roll === 20) {
+      elements.d20ResultCard.dataset.severity = "critical-success";
+    } else {
+      elements.d20ResultCard.removeAttribute("data-severity");
+    }
+    elements.d20ResultGrade.textContent = result.grade;
+    elements.d20ResultNumber.textContent = String(result.roll);
+    elements.d20ResultTitle.textContent = result.title;
+    elements.d20ResultVerdict.textContent = result.verdict.text;
+    elements.d20ResultWhisper.textContent = result.whisper;
+    elements.d20CopyReport.disabled = false;
+    elements.d20CopyShareLink.disabled = false;
+    elements.d20GenerateCard.disabled = false;
+    elements.d20AddictionWarning.hidden = !addictionTriggered;
+    elements.d20ResultCard.hidden = false;
+    elements.d20ResultCard.classList.remove("is-revealing");
+    elements.results.hidden = false;
+    elements.results.setAttribute("aria-busy", "false");
+    elements.readoutState.textContent = "COMPLETE";
+    elements.rollD20Label.textContent = "再问一次";
+
+    if (animateReveal && !reducedMotion.matches) {
+      void elements.d20ResultCard.offsetWidth;
+      elements.d20ResultCard.classList.add("is-revealing");
+    }
+
+    elements.announcer.textContent =
+      `D20 点数 ${result.roll}。${result.grade}，${result.title}。` +
+      `${result.verdict.text}。${result.whisper}`;
+  }
+
+  async function showD20Results(result, animate) {
+    prepareD20Pending();
+    const completed = await animateD20(result);
+    if (!completed) {
+      return false;
+    }
+    renderD20Result(result, animate && !reducedMotion.matches);
+    return true;
+  }
+
   function showResults(result, animate) {
+    if (result.system === "d20") {
+      return showD20Results(result, animate);
+    }
+
     clearRevealTimers();
     const cards = DICE.map(createDieCard);
     prepareResults(cards);
@@ -1499,6 +2332,34 @@
     }
   }
 
+  async function startD20Roll() {
+    if (isRolling || activeSystem !== "d20") {
+      return;
+    }
+
+    isRolling = true;
+    elements.rollD20.disabled = true;
+    elements.rollD20.setAttribute("aria-busy", "true");
+    elements.systemTabs.forEach((tab) => {
+      tab.disabled = true;
+    });
+    elements.announcer.textContent = "正在投掷 D20 天机骰。";
+
+    const roll = randomInteger(20);
+    const result = createD20Result(roll, true);
+
+    try {
+      await showD20Results(result, true);
+    } finally {
+      isRolling = false;
+      elements.rollD20.disabled = false;
+      elements.rollD20.removeAttribute("aria-busy");
+      elements.systemTabs.forEach((tab) => {
+        tab.disabled = false;
+      });
+    }
+  }
+
   function submitManual(event) {
     event.preventDefault();
     const rolls = validateManualForm();
@@ -1513,12 +2374,14 @@
 
   function resetResults() {
     clearRevealTimers();
+    cancelD20Animation();
     clearTransientFeedback();
     activeResult = null;
     elements.diceGrid.replaceChildren();
     elements.results.hidden = true;
     elements.results.removeAttribute("aria-busy");
-    elements.oracleIdle.hidden = false;
+    elements.oracleIdle.hidden = activeSystem === "d20";
+    elements.d20Stage.hidden = activeSystem !== "d20";
     elements.readoutState.textContent = "STANDBY";
     elements.readoutState.classList.remove("is-active");
     elements.overallCard.removeAttribute("data-verdict");
@@ -1532,8 +2395,20 @@
     elements.copyReport.disabled = true;
     elements.copyShareLink.disabled = true;
     elements.generateCard.disabled = true;
+    elements.d20ResultCard.hidden = true;
+    elements.d20ResultCard.removeAttribute("data-tone");
+    elements.d20ResultCard.removeAttribute("data-severity");
+    elements.d20ResultCard.classList.remove("is-revealing");
+    elements.d20CopyReport.disabled = true;
+    elements.d20CopyShareLink.disabled = true;
+    elements.d20GenerateCard.disabled = true;
+    elements.d20AddictionWarning.hidden = true;
     resetFormaInteraction();
     elements.announcer.textContent = "";
+
+    if (activeSystem === "d20") {
+      drawD20Idle();
+    }
   }
 
   function setManualInputsDisabled(disabled) {
@@ -1544,6 +2419,9 @@
   }
 
   function setSharedControlsDisabled(disabled) {
+    elements.systemTabs.forEach((tab) => {
+      tab.disabled = disabled;
+    });
     elements.tabs.forEach((tab) => {
       tab.disabled = disabled;
     });
@@ -1551,6 +2429,7 @@
       tab.disabled = disabled;
     });
     elements.rollAuto.disabled = disabled;
+    elements.rollD20.disabled = disabled;
     elements.manualSubmit.disabled = disabled;
     elements.resetManual.disabled = disabled;
     setManualInputsDisabled(disabled);
@@ -1558,6 +2437,18 @@
 
   function enterSharedView(shared) {
     isSharedView = true;
+    sharedSystem = shared.system;
+
+    if (shared.system === "d20") {
+      activateSystem("d20", false);
+      setSharedControlsDisabled(true);
+      elements.sharedBanner.hidden = false;
+      const result = createD20Result(shared.roll, false);
+      void showD20Results(result, true);
+      return;
+    }
+
+    activateSystem("hex", false);
     activateMode("manual");
     activateScene(shared.sceneId);
 
@@ -1585,6 +2476,14 @@
     elements.sharedBanner.hidden = true;
     setSharedControlsDisabled(false);
     resetResults();
+
+    if (sharedSystem === "d20") {
+      activateSystem("hex", false);
+      activateMode("auto");
+      activateScene("wander");
+      elements.rollD20Label.textContent = "开始问天";
+    }
+
     elements.announcer.textContent = "分享回放已结束，可以开始自己的推演。";
   }
 
@@ -1599,7 +2498,47 @@
     manualInputs.get("D20")?.input.focus();
   }
 
-  function activateMode(mode) {
+  function activateSystem(system, focus = true) {
+    if (
+      isRolling ||
+      !["hex", "d20"].includes(system) ||
+      system === activeSystem
+    ) {
+      return;
+    }
+
+    activeSystem = system;
+    elements.systemTabs.forEach((tab) => {
+      const isActive = tab.dataset.system === system;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+      tab.tabIndex = isActive ? 0 : -1;
+    });
+
+    const isD20 = system === "d20";
+    elements.hexControls.hidden = isD20;
+    elements.d20Controls.hidden = !isD20;
+    elements.oracleIdleTitle.textContent = isD20
+      ? "等待一掷问天"
+      : "等待天机接入";
+    elements.oracleIdleCopy.textContent = isD20
+      ? "投掷 D20，查看此刻虚空给出的单骰回应。"
+      : "选择推演方式，启动六骰阵列。";
+    elements.rollD20Label.textContent = "开始问天";
+    resetResults();
+
+    if (focus) {
+      if (isD20) {
+        elements.rollD20.focus();
+      } else if (activeMode === "auto") {
+        elements.rollAuto.focus();
+      } else {
+        manualInputs.get("D20")?.input.focus();
+      }
+    }
+  }
+
+  function activateMode(mode, focus = true) {
     if (isRolling || mode === activeMode) {
       return;
     }
@@ -1617,9 +2556,9 @@
     elements.manualPanel.hidden = isAuto;
     resetResults();
 
-    if (isAuto) {
+    if (focus && isAuto) {
       elements.rollAuto.focus();
-    } else {
+    } else if (focus) {
       manualInputs.get("D20")?.input.focus();
     }
   }
@@ -1689,6 +2628,31 @@
     nextTab.focus();
   }
 
+  function handleSystemKeydown(event) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    const currentIndex = elements.systemTabs.indexOf(event.currentTarget);
+    let nextIndex;
+
+    if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = elements.systemTabs.length - 1;
+    } else {
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      nextIndex =
+        (currentIndex + direction + elements.systemTabs.length) %
+        elements.systemTabs.length;
+    }
+
+    const nextTab = elements.systemTabs[nextIndex];
+    activateSystem(nextTab.dataset.system);
+    nextTab.focus();
+  }
+
   function configureOnlineOnlyLinks() {
     const isDesktopShell =
       Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__) ||
@@ -1728,6 +2692,10 @@
     });
   }
 
+  elements.systemTabs.forEach((tab) => {
+    tab.addEventListener("click", () => activateSystem(tab.dataset.system));
+    tab.addEventListener("keydown", handleSystemKeydown);
+  });
   elements.tabs.forEach((tab) => {
     tab.addEventListener("click", () => activateMode(tab.dataset.mode));
     tab.addEventListener("keydown", handleTabKeydown);
@@ -1737,9 +2705,13 @@
     tab.addEventListener("keydown", handleSceneKeydown);
   });
   elements.rollAuto.addEventListener("click", startAutoRoll);
+  elements.rollD20.addEventListener("click", startD20Roll);
   elements.copyReport.addEventListener("click", copyBattleReport);
   elements.copyShareLink.addEventListener("click", copyShareLink);
   elements.generateCard.addEventListener("click", openCardNameDialog);
+  elements.d20CopyReport.addEventListener("click", copyBattleReport);
+  elements.d20CopyShareLink.addEventListener("click", copyShareLink);
+  elements.d20GenerateCard.addEventListener("click", openCardNameDialog);
   elements.formaSacrifice.addEventListener("click", handleFormaTap);
   elements.manualForm.addEventListener("submit", submitManual);
   elements.resetManual.addEventListener("click", resetManualForm);

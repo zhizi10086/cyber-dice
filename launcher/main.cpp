@@ -21,12 +21,12 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
 
-constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V4.0.0";
+constexpr wchar_t kWindowTitle[] = L"虚空天机计算盘 V4.1.0";
 constexpr wchar_t kWindowClass[] = L"CyberDice.NativeWindow";
-constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-4.0.0-r4.html";
+constexpr wchar_t kFallbackPageName[] = L"Cyber-Dice-4.1.0.html";
 constexpr wchar_t kVirtualHost[] = L"cyber-dice.local";
 constexpr wchar_t kVirtualUrl[] = L"https://cyber-dice.local/index.html";
-constexpr wchar_t kAssetVersion[] = L"4.0.0-r4";
+constexpr wchar_t kAssetVersion[] = L"4.1.0";
 constexpr int kDefaultClientWidth = 1180;
 constexpr int kDefaultClientHeight = 820;
 constexpr int kMinimumClientWidth = 640;
@@ -121,16 +121,16 @@ std::string BuildEmbeddedDocument() {
   const std::vector<char> formaImage = LoadResourceBytes(IDR_FORMA_PNG);
 
   const bool cssInjected = ReplaceOnce(
-      html, R"(  <link rel="stylesheet" href="styles.css?v=4.0.0-r4">)",
+      html, R"(  <link rel="stylesheet" href="styles.css?v=4.1.0">)",
       "  <style>\n" + css + "\n  </style>");
   const bool scriptInjected = ReplaceOnce(
-      html, R"(  <script src="app.js?v=4.0.0-r4"></script>)",
+      html, R"(  <script src="app.js?v=4.1.0"></script>)",
       "  <script>\n" + javaScript + "\n  </script>");
   const bool qrCodeInjected = ReplaceOnce(
-      html, R"(  <script src="vendor/qrcode-generator.js?v=4.0.0-r4"></script>)",
+      html, R"(  <script src="vendor/qrcode-generator.js?v=4.1.0"></script>)",
       "  <script>\n" + qrCodeJavaScript + "\n  </script>");
   const bool html2CanvasInjected = ReplaceOnce(
-      html, R"(  <script src="vendor/html2canvas.min.js?v=4.0.0-r4"></script>)",
+      html, R"(  <script src="vendor/html2canvas.min.js?v=4.1.0"></script>)",
       "  <script>\n" + html2CanvasJavaScript + "\n  </script>");
   const bool imageInjected = ReplaceOnce(
       html, R"(src="assets/forma.png")",

@@ -57,8 +57,8 @@ android {
         applicationId "com.zhizi10086.cyberdice"
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 40000
-        versionName "4.0.0"
+        versionCode 41000
+        versionName "4.1.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

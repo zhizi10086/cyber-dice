@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#020908">
-  <meta name="description" content="虚空天机计算盘 V4.0.0：以虚空漫游或 Warframe 场景起卦，生成可分享的天机战报、卡牌与天命档案。">
-  <title>虚空天机计算盘 V4.0.0</title>
+  <meta name="description" content="虚空天机计算盘 V4.1.0：支持六合推演与 D20 一掷问天，生成可分享的天机战报、卡牌与天命档案。">
+  <title>虚空天机计算盘 V4.1.0</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="天机骰">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020908'/%3E%3Cpath d='M32 8 52 22 45 48 19 48 12 22Z' fill='none' stroke='%2364ffd0' stroke-width='3'/%3E%3Ccircle cx='32' cy='30' r='5' fill='%2364ffd0'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=4.0.0-r4">
+  <link rel="stylesheet" href="styles.css?v=4.1.0">
 </head>
 <body>
   <div class="ambient-grid" aria-hidden="true"></div>
@@ -23,22 +23,22 @@
       <div class="system-line">
         <span class="status-light" aria-hidden="true"></span>
         <span>VOID ORACLE // SYSTEM ONLINE</span>
-        <span class="system-line__code">SYS.400</span>
+        <span class="system-line__code">SYS.410</span>
       </div>
 
       <h1>
         <span class="title-bracket" aria-hidden="true">[</span>
         虚空天机计算盘
-        <span class="title-version">V4.0.0</span>
+        <span class="title-version">V4.1.0</span>
         <span class="title-bracket" aria-hidden="true">]</span>
       </h1>
 
-      <p class="hero__intro">六骰自旋，称量偏差，窥见此刻天机。</p>
+      <p class="hero__intro">六骰推演命途，一掷叩问天心。</p>
 
       <div class="hero__meta" aria-label="计算盘信息">
-        <span>6 DICE</span>
-        <span>WEIGHT 7.80</span>
-        <span>DEVIATION ±100</span>
+        <span>HEX / D20</span>
+        <span>WEB CRYPTO</span>
+        <span>OFFLINE READY</span>
       </div>
     </header>
 
@@ -60,6 +60,40 @@
           </div>
         </div>
 
+        <div
+          class="system-tabs"
+          id="system-tabs"
+          role="tablist"
+          aria-label="选择推演体系"
+        >
+          <button
+            class="system-tab is-active"
+            id="hex-system-tab"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="hex-controls"
+            data-system="hex"
+          >
+            <span class="system-tab__name">六合推演</span>
+            <span class="system-tab__meta">6D / 命盘</span>
+          </button>
+          <button
+            class="system-tab"
+            id="d20-system-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="d20-controls"
+            tabindex="-1"
+            data-system="d20"
+          >
+            <span class="system-tab__name">一掷问天</span>
+            <span class="system-tab__meta">D20 / 快问</span>
+          </button>
+        </div>
+
+        <div class="system-panel" id="hex-controls" role="tabpanel" aria-labelledby="hex-system-tab">
         <fieldset class="scene-section">
           <legend>占卜场景</legend>
           <div class="scene-tabs" id="scene-tabs" role="radiogroup" aria-label="选择占卜场景">
@@ -173,6 +207,30 @@
           <span class="protocol-note__mark" aria-hidden="true">i</span>
           <p>D100 为反向骰：点数越低，吉兆越强。</p>
         </div>
+        </div>
+
+        <div
+          class="system-panel d20-control-panel"
+          id="d20-controls"
+          role="tabpanel"
+          aria-labelledby="d20-system-tab"
+          hidden
+        >
+          <p class="panel-copy d20-control-panel__copy">
+            凝聚一念，投掷一枚二十面天机骰。无需场景，不问往事，只看此刻虚空给出的回应。
+          </p>
+          <button class="primary-button d20-roll-button" id="roll-d20" type="button">
+            <span class="button-glyph" aria-hidden="true">⬡</span>
+            <span id="roll-d20-label">开始问天</span>
+          </button>
+          <div class="d20-rule-brief" aria-label="一掷问天等级范围">
+            <span data-tone="bad">1 大失败</span>
+            <span data-tone="bad">2–5 凶</span>
+            <span data-tone="neutral">6–15 中平</span>
+            <span data-tone="good">16–19 吉</span>
+            <span data-tone="good">20 大成功</span>
+          </div>
+        </div>
       </section>
 
       <section class="oracle-panel" aria-labelledby="oracle-title">
@@ -185,6 +243,20 @@
           <span class="readout-state" id="readout-state">STANDBY</span>
         </div>
 
+        <div class="d20-stage" id="d20-stage" data-tone="neutral" hidden>
+          <div class="d20-stage__canvas-wrap">
+            <canvas
+              id="d20-canvas"
+              width="360"
+              height="360"
+              role="img"
+              aria-label="正在等待投掷的正二十面体"
+            ></canvas>
+            <span class="d20-face-value" id="d20-face-value" aria-hidden="true">?</span>
+          </div>
+          <p class="d20-stage__caption" id="d20-stage-caption">D20 天机骰静候问询</p>
+        </div>
+
         <div class="oracle-idle" id="oracle-idle">
           <div class="void-orb" aria-hidden="true">
             <span class="void-ring void-ring--outer"></span>
@@ -192,8 +264,8 @@
             <span class="void-ring void-ring--inner"></span>
             <span class="void-core">∅</span>
           </div>
-          <p class="idle-title">等待天机接入</p>
-          <p class="idle-copy">选择推演方式，启动六骰阵列。</p>
+          <p class="idle-title" id="oracle-idle-title">等待天机接入</p>
+          <p class="idle-copy" id="oracle-idle-copy">选择推演方式，启动六骰阵列。</p>
         </div>
 
         <div class="results" id="results" hidden>
@@ -232,6 +304,42 @@
               【警告】虚空煞气极重，强行起阵必遭反噬。
             </p>
             <p class="addiction-warning" id="addiction-warning" role="alert" hidden>
+              【天道警示】一日之内频繁窥探天机，气运将耗损，建议下线保肝。
+            </p>
+          </article>
+
+          <article class="d20-result-card" id="d20-result-card" data-tone="neutral" hidden>
+            <header class="d20-result-card__head">
+              <span class="eyebrow">D20 // ONE CAST</span>
+              <span class="d20-result-grade" id="d20-result-grade">中平</span>
+            </header>
+            <div class="d20-result-card__core">
+              <span class="d20-result-number" id="d20-result-number">10</span>
+              <div>
+                <span class="d20-result-label">天机点数</span>
+                <strong class="d20-result-title" id="d20-result-title">混沌未明</strong>
+              </div>
+            </div>
+            <section class="d20-result-verdict">
+              <span class="verdict-label">判词</span>
+              <strong id="d20-result-verdict">命途难定</strong>
+            </section>
+            <p class="d20-result-whisper" id="d20-result-whisper"></p>
+            <div class="overall-actions d20-result-actions">
+              <button class="copy-button" id="d20-copy-report" type="button" disabled>
+                <span aria-hidden="true">⧉</span>
+                <span>复制天机战报</span>
+              </button>
+              <button class="copy-button" id="d20-copy-share-link" type="button" disabled>
+                <span aria-hidden="true">⌁</span>
+                <span>复制本卦链接</span>
+              </button>
+              <button class="copy-button" id="d20-generate-card" type="button" disabled>
+                <span aria-hidden="true">▣</span>
+                <span>生成天机卡牌</span>
+              </button>
+            </div>
+            <p class="addiction-warning" id="d20-addiction-warning" role="alert" hidden>
               【天道警示】一日之内频繁窥探天机，气运将耗损，建议下线保肝。
             </p>
           </article>
@@ -361,7 +469,7 @@
       <div class="oracle-card__frame">
         <header class="oracle-card__header">
           <span>VOID ORACLE</span>
-          <span>V4.0.0</span>
+          <span>V4.1.0</span>
         </header>
         <p class="oracle-card__title">虚空天机签</p>
         <p class="oracle-card__seal">法号：<strong id="card-seal-name">无名道友</strong></p>
@@ -387,6 +495,42 @@
           <div class="oracle-card__link">
             <span>扫描查看本卦</span>
             <small id="card-share-url"></small>
+          </div>
+        </footer>
+      </div>
+    </article>
+
+    <article class="oracle-card d20-oracle-card" id="d20-oracle-card" hidden>
+      <div class="d20-card__frame">
+        <header class="oracle-card__header">
+          <span>VOID ORACLE // D20</span>
+          <span>V4.1.0</span>
+        </header>
+        <p class="oracle-card__title d20-card__title">一掷问天</p>
+        <p class="oracle-card__seal">法号：<strong id="d20-card-seal-name">无名道友</strong></p>
+        <div class="d20-card__hero" id="d20-card-hero" data-tone="neutral">
+          <span class="d20-card__die-label">D20</span>
+          <strong class="d20-card__roll" id="d20-card-roll">10</strong>
+          <div class="d20-card__grade">
+            <span id="d20-card-grade">中平</span>
+            <strong id="d20-card-title">混沌未明</strong>
+          </div>
+        </div>
+        <section class="d20-card__verdict">
+          <span>判词</span>
+          <strong id="d20-card-verdict">命途难定</strong>
+        </section>
+        <section class="d20-card__whisper">
+          <span>天机低语</span>
+          <p id="d20-card-whisper"></p>
+        </section>
+        <footer class="oracle-card__footer">
+          <div class="oracle-card__qr">
+            <img id="d20-card-qr-code" alt="一掷问天分享链接二维码">
+          </div>
+          <div class="oracle-card__link">
+            <span>扫描再问一次</span>
+            <small id="d20-card-share-url"></small>
           </div>
         </footer>
       </div>
@@ -418,8 +562,8 @@
     </article>
   </template>
 
-  <script src="vendor/qrcode-generator.js?v=4.0.0-r4"></script>
-  <script src="vendor/html2canvas.min.js?v=4.0.0-r4"></script>
-  <script src="app.js?v=4.0.0-r4"></script>
+  <script src="vendor/qrcode-generator.js?v=4.1.0"></script>
+  <script src="vendor/html2canvas.min.js?v=4.1.0"></script>
+  <script src="app.js?v=4.1.0"></script>
 </body>
 </html>

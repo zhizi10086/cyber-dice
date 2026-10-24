@@ -1,20 +1,20 @@
-const CACHE_NAME = "cyber-dice-v4.0.0-r4";
+const CACHE_NAME = "cyber-dice-v4.1.0";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./styles.css?v=4.0.0-r4",
+  "./styles.css?v=4.1.0",
   "./app.js",
-  "./app.js?v=4.0.0-r4",
+  "./app.js?v=4.1.0",
   "./manifest.json",
   "./assets/forma.png",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/apple-touch-icon.png",
   "./vendor/html2canvas.min.js",
-  "./vendor/html2canvas.min.js?v=4.0.0-r4",
+  "./vendor/html2canvas.min.js?v=4.1.0",
   "./vendor/qrcode-generator.js",
-  "./vendor/qrcode-generator.js?v=4.0.0-r4",
+  "./vendor/qrcode-generator.js?v=4.1.0",
   "./THIRD_PARTY_NOTICES.md",
 ];
 

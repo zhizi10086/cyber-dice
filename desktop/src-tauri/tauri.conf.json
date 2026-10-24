@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "虚空天机计算盘",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "identifier": "com.zhizi10086.cyberdice",
   "build": {
     "beforeBuildCommand": "node scripts/stage.mjs",
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "虚空天机计算盘 V4.0.0",
+        "title": "虚空天机计算盘 V4.1.0",
         "width": 1180,
         "height": 820,
         "minWidth": 640,
@@ -30,7 +30,7 @@
     "targets": ["dmg"],
     "category": "Entertainment",
     "shortDescription": "虚空天机计算盘",
-    "longDescription": "六骰自旋，称量偏差，窥见此刻天机。",
+    "longDescription": "六骰推演命途，D20 一掷叩问天心。",
     "copyright": "Copyright (C) 2026 zhizi10086",
     "icon": [
       "icons/32x32.png",
